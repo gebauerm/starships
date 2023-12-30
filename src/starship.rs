@@ -1,101 +1,130 @@
-use std::ops::{Sub, Add};
+use measurements::{angle, Angle};
 use crate::space::QuadraticSpace;
 
 
 #[derive(Debug)]
-pub struct StarshipSpacePointer {
-    // this is currently waste of space, as the pointer can not be negative, but has to be as the delta_x and delta_y can
-    x: u32,
-    y: u32,
+pub struct StarshipSpacePointer{
+    x: f32,
+    y: f32,
+    angle: angle::Angle,
+    rotation_speed: angle::Angle,
+    movement_speed: f32,
+    plane_space: u32
 }
 
 impl StarshipSpacePointer {
+
+    pub fn new(x: f32, y: f32, angle: f64, rotation_speed: f64, movement_speed: f32) -> Self{
+        let mut pointer = StarshipSpacePointer::default();
+        // TODO: implement that arguments are taken if they exist
+        pointer
+    }
     pub fn build(space: &mut QuadraticSpace) -> Self {
         let (x, y) = space.get_random_coordinates();
-        StarshipSpacePointer { x: x, y: y }
+        let angle = Angle::from_degrees(0.0);
+        let rotation_speed = Angle::from_degrees(90.0);
+        let plane_space = (space.width * space.height) as u32;
+        StarshipSpacePointer {
+            x: x, y: y, angle: angle, rotation_speed: rotation_speed, movement_speed: 10.0, plane_space: plane_space }
     }
 
-    fn move_pointer_left(&mut self, delta_y: u32) {
-        // TODO: this is inefficient, see above comment
-        self.y = self.y.sub(delta_y);
+    fn rotate_pointer_left(&self) ->  angle::Angle {
+        self.angle + self.rotation_speed
     }
 
-    fn move_pointer_right(&mut self, delta_y: u32) {
-        self.y = self.y.add(delta_y);
+    fn rotate_pointer_right(&self) -> angle::Angle {
+        self.angle - self.rotation_speed
     }
 
-    fn move_pointer_up(&mut self, delta_x: u32) {
-        self.x = self.x.add(delta_x);
+    fn move_pointer(&self, angle: &Angle) -> (f32, f32) {
+        let mut x_angle = angle.as_radians().cos() as f32;
+        let mut y_angle = angle.as_radians().sin() as f32;
+        x_angle = (x_angle * 100.0).round() / 100.0;
+        y_angle = (y_angle * 100.0).round() / 100.0;
+
+        let new_x = self.x + x_angle*self.movement_speed;
+        let new_y = self.y + y_angle*self.movement_speed;
+        (new_x, new_y)
     }
 
-    fn move_pointer_down(&mut self, delta_x: u32) {
-        self.x = self.x.sub(delta_x)
-    }
+    fn validate_pointer_position(&self, x: f32, y: f32) -> bool {
+        let ship_plane_space = (x * y) as u32;
+        ship_plane_space <= self.plane_space
+        }
 
-    fn move_pointer_left_up(&mut self, delta_x:u32, delta_y: u32) {
-        self.move_pointer_left(delta_y);
-        self.move_pointer_up(delta_x);
-    }
-
-    fn move_pointer_right_up(&mut self, delta_x: u32, delta_y:u32) {
-        self.move_pointer_right(delta_y);
-        self.move_pointer_up(delta_x);
-    }
-
-    fn move_pointer_left_down(&mut self, delta_x: u32, delta_y: u32) {
-        self.move_pointer_left(delta_y);
-        self.move_pointer_down(delta_x);
-    }
-
-    fn move_pointer_right_down(&mut self, delta_x: u32, delta_y: u32) {
-        self.move_pointer_right(delta_y);
-        self.move_pointer_down(delta_x);
+    fn commit_move(&mut self, x: f32, y: f32, angle: angle::Angle) {
+        self.x = x;
+        self.y = y;
+        self.angle = angle;
     }
 }
+
+impl Default for StarshipSpacePointer {
+    fn default() -> Self {
+        let angle = Angle::from_degrees(0.0);
+        let rotation_speed = Angle::from_degrees(90.0);
+        let plane_space =100 * 100;
+        Self{x: 0.0, y: 0.0, angle: angle, rotation_speed: rotation_speed, movement_speed: 1.0,
+            plane_space: plane_space }
+    }
+}
+
+pub enum MovementDirection {
+    Left,
+    Right
+}
+
 
 
 #[derive(Debug)]
 pub struct StarShip {
     starshipspacepointer: StarshipSpacePointer,
-    speed: u32,
 }
 
 impl StarShip{
-    pub fn new(space: &mut QuadraticSpace) -> Self {
+    pub fn build(space: &mut QuadraticSpace) -> Self {
         let starshippointer = StarshipSpacePointer::build(space);
-        StarShip { starshipspacepointer: starshippointer, speed: 1 }
+        StarShip { starshipspacepointer: starshippointer }
     }
 
-    pub fn move_left(&mut self) {
-        self.starshipspacepointer.move_pointer_left(self.speed);
-    }
-
-    pub fn move_right(&mut self) {
-        self.starshipspacepointer.move_pointer_right(self.speed);
-    }
-
-    pub fn move_up(&mut self) {
-        self.starshipspacepointer.move_pointer_up(self.speed);
-    }
-
-    pub fn move_down(&mut self) {
-        self.starshipspacepointer.move_pointer_down(self.speed);
-    }
-
-    pub fn move_left_up(&mut self) {
-        self.starshipspacepointer.move_pointer_left_up(self.speed, self.speed);
-    }
-
-    pub fn move_right_up(&mut self) {
-        self.starshipspacepointer.move_pointer_right_up(self.speed, self.speed);
-    }
-
-    pub fn move_pointer_left_down(&mut self) {
-        self.starshipspacepointer.move_pointer_left_down(self.speed, self.speed);
-    }
-
-    pub fn move_pointer_right_down(&mut self) {
-        self.starshipspacepointer.move_pointer_right_down(self.speed, self.speed)
+    pub fn move_starship(&mut self, movement_direction: MovementDirection) -> bool {
+        let angle = match movement_direction {
+            MovementDirection::Left => self.starshipspacepointer.rotate_pointer_left(),
+            MovementDirection::Right => self.starshipspacepointer.rotate_pointer_right()
+        };
+        let (x, y) = self.starshipspacepointer.move_pointer(&angle);
+        if self.starshipspacepointer.validate_pointer_position(x, y) {
+            self.starshipspacepointer.commit_move(x, y, angle);
+            true
+        }
+        else {
+            false
+        }
     }
 }
 
+
+
+#[cfg(test)]
+mod tests {
+    use super::StarshipSpacePointer;
+
+
+    #[test]
+    fn test_pointer_movement() {
+        // prepare
+        let mut starshipspacepointer = StarshipSpacePointer::default();
+
+        // perform
+        let angle = starshipspacepointer.rotate_pointer_left();
+        let (x,y) = starshipspacepointer.move_pointer(&angle);
+        starshipspacepointer.commit_move(x, y, angle);
+        let x = 0.0;
+        let y = 1.0;
+
+        // assert
+        assert_eq!(x, starshipspacepointer.x);
+        assert_eq!(y, starshipspacepointer.y)
+    }
+
+}

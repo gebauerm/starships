@@ -1,17 +1,24 @@
 use starships::space::QuadraticSpace;
 use starships::starship::StarShip;
+use starships::starship::MovementDirection;
 
 fn main() {
-    let mut space = QuadraticSpace::build(1);
-    let mut starship_1 = StarShip::new(&mut space);
-    let mut starship_2 = StarShip::new(&mut space);
+    // random generator needs to move out of space, as i need to space currently as mutable reference. I dont want that
+    let mut space = QuadraticSpace::build(100.0);
+    let mut starship_1 = StarShip::build(&mut space);
+    let mut starship_2 = StarShip::build(&mut space);
 
     println!("{:?}", starship_1);
-    starship_1.move_left();
+    let movement_direction = MovementDirection::Right;
+    let validated = starship_1.move_starship(movement_direction);
+    println!("{}", validated);
     println!("{:?}", starship_1);
+
 
     println!("{:?}", starship_2);
-    starship_2.move_down();
+    let movement_direction = MovementDirection::Left;
+    let validated = starship_2.move_starship(movement_direction);
+    println!("{}", validated);
     println!("{:?}", starship_2);
 
 }
