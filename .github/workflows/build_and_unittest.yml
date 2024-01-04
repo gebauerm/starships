@@ -23,11 +23,15 @@ jobs:
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: Build
         run: cargo build --verbose
-      - run: cargo install cargo-junit
+      - name: Install cargo-nextest
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
       - name: Test
-        run: cargo test --verbose --name test_report.xml
+        run: cargo nextest run --profile ci
       - name: Publish Results
         uses: mikepenz/action-junit-report@v4
         if: success() || failure()
         with:
-          report_paths: '/test_report.xml'
+          report_paths: 'target/ci/test_report.xml'

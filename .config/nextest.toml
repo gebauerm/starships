@@ -1,0 +1,6 @@
+[profile.default]
+test_threads=2
+
+[profile.ci.junit]  # this can be some other profile, too
+path = "test_report.xml"
+store-failure-output = true
