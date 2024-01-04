@@ -24,6 +24,6 @@ jobs:
       - run: cargo install cargo-junit
       - run: cargo build --verbose
       - run: cargo test --verbose --name test_report.xml
-        if: scucess() || failure()
+        if: success() || failure()
         with:
           report_paths: '/test_report.xml'
