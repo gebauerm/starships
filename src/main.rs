@@ -22,7 +22,4 @@ fn main() {
     println!("{:?}", starship_2);
 
 }
-
-// TODO: check for cleanups
-// TODO: more testing
 // TODO: start including timesteps
