@@ -22,3 +22,9 @@ fn main() {
     println!("{:?}", starship_2);
 
 }
+
+
+// TODO: Junitxml for tests
+// TODO: check for cleanups
+// TODO: more testing
+// TODO: start including timesteps

@@ -20,6 +20,7 @@ impl StarshipSpacePointer {
         pointer
     }
     pub fn build(space: &mut QuadraticSpace) -> Self {
+        // TODO: random space coordinates have to be improved
         let (x, y) = space.get_random_coordinates();
         let angle = Angle::from_degrees(0.0);
         let rotation_speed = Angle::from_degrees(90.0);
