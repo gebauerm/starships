@@ -39,4 +39,4 @@ jobs:
         uses: mikepenz/action-junit-report@v4
         if: success() || failure()
         with:
-          report_paths: 'target/ci/test_report.xml'
+          report_paths: 'target/nextest/ci/test_report.xml'
