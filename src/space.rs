@@ -41,7 +41,6 @@ mod tests {
 
         // perform
         let space = QuadraticSpace::build(width);
-        panic!("Test!");
 
         // assert
         assert_eq!(width, space.width);
