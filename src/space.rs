@@ -17,7 +17,7 @@ pub struct QuadraticSpace {
 }
 
 impl QuadraticSpace {
-    pub fn build(width: f32) -> Self {
+    pub fn new(width: f32) -> Self {
         let mut rng = rand::thread_rng();
         Self { width: width, height: width.clone(),  rng: rng }
     }
@@ -40,7 +40,7 @@ mod tests {
         let width: f32 = 10.0;
 
         // perform
-        let space = QuadraticSpace::build(width);
+        let space = QuadraticSpace::new(width);
 
         // assert
         assert_eq!(width, space.width);

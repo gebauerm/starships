@@ -4,7 +4,7 @@ use starships::starship::MovementDirection;
 
 fn main() {
     // random generator needs to move out of space, as i need to space currently as mutable reference. I dont want that
-    let mut space = QuadraticSpace::build(100.0);
+    let mut space = QuadraticSpace::new(100.0);
     let mut starship_1 = StarShip::build(&mut space);
     let mut starship_2 = StarShip::build(&mut space);
 
@@ -23,8 +23,6 @@ fn main() {
 
 }
 
-
-// TODO: Junitxml for tests
 // TODO: check for cleanups
 // TODO: more testing
 // TODO: start including timesteps
