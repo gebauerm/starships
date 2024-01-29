@@ -1,6 +1,6 @@
 use starships::space::QuadraticSpace;
 use starships::starship::StarShip;
-use starships::starship::MovementDirection;
+use starships::starship::starshipspacepointer::MovementDirection;
 
 fn main() {
     // random generator needs to move out of space, as i need to space currently as mutable reference. I dont want that
