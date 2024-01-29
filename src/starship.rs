@@ -2,20 +2,20 @@ pub mod starshipspacepointer;
 pub mod starshiphealth;
 use crate::starship::starshipspacepointer::{MovementDirection, StarshipSpacePointer};
 use crate::space::QuadraticSpace;
-use crate::starship::starshiphealth::{StarshipState, StarshipState, Hitpoints};
+use crate::starship::starshiphealth::{StarshipHealth, Hitpoints};
 
 
 
 #[derive(Debug)]
 pub struct StarShip {
     starshipspacepointer: StarshipSpacePointer,
-    starshipstate: StarshipState
+    starshiphealth: StarshipHealth
 }
 
 impl StarShip{
 
     pub fn new(starshippointer: StarshipSpacePointer) -> Self {
-        Self { starshipspacepointer: starshippointer, starshipstate: StarshipState::new() }
+        Self { starshipspacepointer: starshippointer, starshiphealth: StarshipHealth::new() }
     }
 
     pub fn build(space: &mut QuadraticSpace) -> Self {
@@ -43,8 +43,9 @@ impl StarShip{
         }
     }
 
-    pub fn take_hit(&mut self, damage: Hitpoints) -> StarshipState {
-        self.starshipstate.take_hit(damage)
+    pub fn take_hit(&mut self, damage: Hitpoints) -> &StarshipHealth {
+        self.starshiphealth = self.starshiphealth.take_hit(damage);
+        &self.starshiphealth
     }
 
 }
@@ -65,7 +66,7 @@ impl Drop for StarShip {
 
 #[cfg(test)]
 mod tests {
-    use super::{StarshipSpacePointer, StarShip, MovementDirection};
+    use super::{StarShip, MovementDirection};
 
     #[test]
     fn test_ship_valid_movement() {

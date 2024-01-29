@@ -2,13 +2,13 @@ use std::ops::Sub;
 
 
 
-#[derive(Debug)]
-struct Hitpoints {
+#[derive(Debug, Copy, Clone)]
+pub struct Hitpoints {
     value: u32
 }
 
 impl Hitpoints {
-    fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         self.value > 0
     }
 }
@@ -25,14 +25,14 @@ impl Sub for Hitpoints {
 
 
 #[derive(Debug)]
-pub enum StarshipState {
+pub enum StarshipHealth {
     Alive(Hitpoints),
     Dead
 }
 
-impl StarshipState {
+impl StarshipHealth {
     pub fn new() -> Self {
-        StarshipState::Alive(Hitpoints { value: 100 })
+        StarshipHealth::Alive(Hitpoints { value: 100 })
     }
 
     fn build(hitpoints: Hitpoints) -> Self {
@@ -44,10 +44,10 @@ impl StarshipState {
         }
     }
 
-    pub fn take_hit(self, damage: Hitpoints) -> Self {
+    pub fn take_hit(&self, damage: Hitpoints) -> Self {
         if let Self::Alive(hitpoints) = self {
-            let hitpoints = hitpoints - damage;
-            Self::build(hitpoints - damage)
+            let hitpoints = *hitpoints - damage;
+            Self::build(hitpoints)
         }
         else {
             Self::Dead
