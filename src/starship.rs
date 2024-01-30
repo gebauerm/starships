@@ -2,7 +2,7 @@ pub mod starshipspacepointer;
 pub mod starshiphealth;
 use crate::starship::starshipspacepointer::{MovementDirection, StarshipSpacePointer};
 use crate::space::QuadraticSpace;
-use crate::starship::starshiphealth::{StarshipHealth, Hitpoints};
+use crate::starship::starshiphealth::StarshipHealth;
 
 
 
@@ -43,7 +43,7 @@ impl StarShip{
         }
     }
 
-    pub fn take_hit(&mut self, damage: Hitpoints) -> &StarshipHealth {
+    pub fn take_hit(&mut self, damage: u32) -> &StarshipHealth {
         self.starshiphealth = self.starshiphealth.take_hit(damage);
         &self.starshiphealth
     }
@@ -66,6 +66,8 @@ impl Drop for StarShip {
 
 #[cfg(test)]
 mod tests {
+    use crate::starship::starshiphealth::StarshipHealth;
+
     use super::{StarShip, MovementDirection};
 
     #[test]
@@ -92,6 +94,33 @@ mod tests {
 
         // assert
         assert!(!moved);
+    }
+
+    #[test]
+    fn test_ship_take_hit_alive() {
+        let mut starship = StarShip::default();
+        let damage = 5;
+        let leftover_hitpoints = 95;
+
+        let starshiphealth = starship.take_hit(damage);
+
+        match starshiphealth {
+            StarshipHealth::Alive(hitpoints) => assert_eq!(&leftover_hitpoints, hitpoints),
+            StarshipHealth::Dead => assert!(false)
+        }
+    }
+
+    #[test]
+    fn test_ship_take_hit_dead() {
+        let mut starship = StarShip::default();
+        let damage = 100;
+
+        let starshiphealth = starship.take_hit(damage);
+
+        match starshiphealth {
+            StarshipHealth::Alive(hitpoints) => assert!(false),
+            StarshipHealth::Dead => assert!(true)
+        }
     }
 
 }

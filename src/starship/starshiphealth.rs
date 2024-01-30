@@ -1,42 +1,17 @@
-use std::ops::Sub;
-
-
-
-#[derive(Debug, Copy, Clone)]
-pub struct Hitpoints {
-    value: u32
-}
-
-impl Hitpoints {
-    pub fn is_zero(&self) -> bool {
-        self.value > 0
-    }
-}
-
-impl Sub for Hitpoints {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self::Output {
-        Self {
-            value: self.value - other.value
-        }
-    }
-}
-
 
 #[derive(Debug)]
 pub enum StarshipHealth {
-    Alive(Hitpoints),
+    Alive(u32),
     Dead
 }
 
 impl StarshipHealth {
     pub fn new() -> Self {
-        StarshipHealth::Alive(Hitpoints { value: 100 })
+        StarshipHealth::Alive(100)
     }
 
-    fn build(hitpoints: Hitpoints) -> Self {
-        if hitpoints.is_zero() {
+    fn build(hitpoints: u32) -> Self {
+        if hitpoints <= 0 {
             Self::Dead
         }
         else {
@@ -44,13 +19,17 @@ impl StarshipHealth {
         }
     }
 
-    pub fn take_hit(&self, damage: Hitpoints) -> Self {
-        if let Self::Alive(hitpoints) = self {
-            let hitpoints = *hitpoints - damage;
-            Self::build(hitpoints)
+    pub fn take_hit(&self, damage: u32) -> Self {
+        match self {
+            Self::Alive(hitpoints) => Self::build(*hitpoints - damage),
+            Self::Dead => Self::Dead
         }
-        else {
-            Self::Dead
+    }
+
+    pub fn get_hitpoints(self) -> u32 {
+        match self {
+            Self::Alive(hitpoints) => hitpoints,
+            Self::Dead => panic!("called unwrap() on a StarshipHealth::Dead!")
         }
     }
 }
