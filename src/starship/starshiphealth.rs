@@ -26,7 +26,7 @@ impl StarshipHealth {
         }
     }
 
-    pub fn get_hitpoints(self) -> u32 {
+    pub fn get_hitpoints(&self) -> &u32 {
         match self {
             Self::Alive(hitpoints) => hitpoints,
             Self::Dead => panic!("called unwrap() on a StarshipHealth::Dead!")

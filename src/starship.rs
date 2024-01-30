@@ -104,10 +104,7 @@ mod tests {
 
         let starshiphealth = starship.take_hit(damage);
 
-        match starshiphealth {
-            StarshipHealth::Alive(hitpoints) => assert_eq!(&leftover_hitpoints, hitpoints),
-            StarshipHealth::Dead => assert!(false)
-        }
+        assert_eq!(starshiphealth.get_hitpoints(), &leftover_hitpoints)
     }
 
     #[test]
