@@ -1,8 +1,14 @@
+use std::cmp::Ordering;
+use std::sync::atomic::AtomicUsize;
+
 use starships::space::QuadraticSpace;
 use starships::starship::StarShip;
 use starships::starship::starshipspacepointer::MovementDirection;
 
+
 fn main() {
+
+
     // random generator needs to move out of space, as i need to space currently as mutable reference. I dont want that
     let mut space = QuadraticSpace::new(100.0);
     let mut starship_1 = StarShip::build(&mut space);
@@ -23,3 +29,4 @@ fn main() {
 
 }
 // TODO: start including timesteps
+// TODO: spaceengine, as the space seems to function as an in memory database. How should ships detect each other?

@@ -1,17 +1,53 @@
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::starship::starshipspacepointer::SpacePosition;
+
 use rand::{self, Rng};
 use rand::rngs;
 
+trait SpaceObject {
 
-pub trait MatrixSpace {
-    fn col_vec(&self) -> &Vec<u32>;
-    fn row_vec(&self) -> &Vec<u32>;
 }
+
+struct SpaceConnection {
+    space: QuadraticSpace
+}
+impl SpaceConnection {
+    pub fn commit(&self, object: impl SpaceObject) {
+        self.space.shippositions.store(object);
+    }
+}
+
+
+#[derive(Debug)]
+struct ShipPositionsList {
+    positions: HashMap<usize, SpacePosition>,
+    counter: AtomicUsize
+}
+impl ShipPositionsList {
+    pub fn store(&self, space_position: SpacePosition) -> usize {
+        self.validate(space_position);
+        let uid =self.get_id();
+        self.positions.insert(uid, space_position);
+        uid
+    }
+    fn validate(&self, space_position: SpacePosition) {
+
+    }
+
+    fn get_id(&self) -> usize {
+        self.counter.fetch_add(1, Ordering::Relaxed)
+    }
+}
+
+
 
 #[derive(Debug)]
 pub struct QuadraticSpace {
     // we are currently assuming a space is a flat quadratic plane (2D)
     pub width: f32,
     pub height: f32,
+    pub shippositions: ShipPositionsList,
     // TODO: random number generator has to move out of the Space
     rng: rngs::ThreadRng,
 }
@@ -19,7 +55,8 @@ pub struct QuadraticSpace {
 impl QuadraticSpace {
     pub fn new(width: f32) -> Self {
         let mut rng = rand::thread_rng();
-        Self { width: width, height: width.clone(),  rng: rng }
+        static COUNTER: AtomicUsize = AtomicUsize::new(1);
+        Self { width: width, height: width.clone(),  rng: rng, shippositions: ShipPositionsList { positions: ShipPositionsList::new() } }
     }
 
     pub fn get_random_coordinates(&mut self) -> (f32, f32) {
