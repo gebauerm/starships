@@ -2,21 +2,26 @@ use std::cmp::Ordering;
 use std::sync::atomic::AtomicUsize;
 
 use starships::space::QuadraticSpace;
-use starships::starship::StarShip;
+use starships::starship::{self, StarShip};
 use starships::starship::starshipspacepointer::MovementDirection;
 
 
 fn main() {
 
 
-    // random generator needs to move out of space, as i need to space currently as mutable reference. I dont want that
+    // desired behavior below:
     let mut space = QuadraticSpace::new(100.0);
-    let mut starship_1 = StarShip::build(&mut space);
-    let mut starship_2 = StarShip::build(&mut space);
+
+    // can be soled over a builder factory, which uses starship_definitions for construction of a ship
+    let mut starship_1 = StarShip::new(rotation_speed, movement_speed)
+    let mut starship_2 = StarShip::new(rotiation_speed, movement_speed)
+
+    starship_1.register_ship(space); //creates space position in space and stores a reference of it in the ship
+    starship_2.register_ship(space);
 
     println!("{:?}", starship_1);
     let movement_direction = MovementDirection::Right;
-    let validated = starship_1.move_starship(movement_direction);
+    let validated = starship_1.move_starship(movement_direction);  // this should change the position in space
     println!("{}", validated);
     println!("{:?}", starship_1);
 
@@ -29,4 +34,4 @@ fn main() {
 
 }
 // TODO: start including timesteps
-// TODO: spaceengine, as the space seems to function as an in memory database. How should ships detect each other?
+

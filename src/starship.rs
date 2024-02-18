@@ -1,41 +1,44 @@
-pub mod starshipspacepointer;
+pub mod ship_components;
 pub mod starshiphealth;
-use crate::starship::starshipspacepointer::{MovementDirection, StarshipSpacePointer};
+use crate::starship::ship_components::{MovementDirection, StarshipEngine};
 use crate::space::QuadraticSpace;
 use crate::starship::starshiphealth::StarshipHealth;
 
 
-
+/// Starship provides interaction with the Space Struct. Its components define how the interaction with the
+/// Space is been done.
+///     E.g. The engine determines movement_speed and rotiation_speed and thus implicitly defines how
+///         positions can be manipulated by a ship
 #[derive(Debug)]
 pub struct StarShip {
-    starshipspacepointer: StarshipSpacePointer,
+
+    engine: StarshipEngine,
     starshiphealth: StarshipHealth
 }
 
 impl StarShip{
 
-    pub fn new(starshippointer: StarshipSpacePointer) -> Self {
-        Self { starshipspacepointer: starshippointer, starshiphealth: StarshipHealth::new() }
+    pub fn new(starshippointer: StarshipEngine) -> Self {
+        Self { engine: starshippointer, starshiphealth: StarshipHealth::new() }
     }
 
     pub fn build(space: &mut QuadraticSpace) -> Self {
-        let (x, y) = space.get_random_coordinates();
         let angle = 0.0;
         let rotation_speed = 90.0;
         let movement_speed = 10.0;
-        let starshippointer = StarshipSpacePointer::new(
-            x, y, angle, rotation_speed, movement_speed, space.width, space.height);
+        let starshippointer = StarshipEngine::new(
+            x, y, angle, rotation_speed, movement_speed, space.widt);
         StarShip::new(starshippointer)
     }
 
     pub fn move_starship(&mut self, movement_direction: MovementDirection) -> bool {
         let angle = match movement_direction {
-            MovementDirection::Left => self.starshipspacepointer.rotate_pointer_left(),
-            MovementDirection::Right => self.starshipspacepointer.rotate_pointer_right()
+            MovementDirection::Left => self.engine.rotate_pointer_left(),
+            MovementDirection::Right => self.engine.rotate_pointer_right()
         };
-        let (x, y) = self.starshipspacepointer.move_pointer(&angle);
-        if self.starshipspacepointer.validate_pointer_position(x, y) {
-            self.starshipspacepointer.commit_move(x, y, angle);
+        let (x, y) = self.engine.move_pointer(&angle);
+        if self.engine.validate_pointer_position(x, y) {
+            self.engine.commit_move(x, y, angle);
             true
         }
         else {
@@ -52,7 +55,7 @@ impl StarShip{
 
 impl Default for StarShip {
     fn default() -> Self {
-        let starshippointer = StarshipSpacePointer::default();
+        let starshippointer = StarshipEngine::default();
         Self::new(starshippointer)
     }
 }
