@@ -1,7 +1,7 @@
 pub mod positions;
 use rand::Rng;
 use rand::rngs;
-use crate::space::positions::{SpacePositionsList, SpacePosition};
+use crate::space::positions::{SpacePositionsStorage, SpacePosition};
 
 
 
@@ -20,7 +20,7 @@ pub struct QuadraticSpace {
     // we are currently assuming a space is a flat quadratic plane (2D)
     pub width: f32,
     pub height: f32,
-    pub positions: SpacePositionsList,
+    pub positions: SpacePositionsStorage,
     // TODO: random number generator has to move out of the Space
     rng: rngs::ThreadRng,
 }
@@ -28,7 +28,7 @@ pub struct QuadraticSpace {
 impl QuadraticSpace {
     pub fn new(width: f32) -> Self {
         static COUNTER: AtomicUsize = AtomicUsize::new(1);
-        Self { width: width, height: width.clone(),  rng: rng, positions: SpacePositionsList::new() }
+        Self { width: width, height: width.clone(),  rng: rng, positions: SpacePositionsStorage::new() }
     }
 
     pub fn get_position(&self, position_id: &usize) {

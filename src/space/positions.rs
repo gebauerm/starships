@@ -2,21 +2,39 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use rand::rngs::ThreadRng;
 use measurements::Angle;
-use rand::Rng;
 
 
-
+enum RotationDirection {
+    Left,
+    Right
+}
 
 pub trait SpaceObject {
 
-    fn get_id(&self) {
+    fn get_id(&self) -> usize;
+
+    fn set_id(&mut self, object_id: usize);
+}
+
+
+pub trait ObjectStorage {
+    fn create_id(&self, space_object: &mut Box<dyn SpaceObject>);
+
+    fn commit(&mut self, space_object: Box<dyn SpaceObject>);
+
+    fn get_object(&self, object_id: &usize) -> &Box<dyn SpaceObject>;
+
+    fn save(&mut self, mut space_object: Box<dyn SpaceObject>) -> usize {
+        self.create_id(&mut space_object);
+        self.commit(space_object);
+        space_object.get_id()
     }
 }
 
 
 #[derive(Debug)]
 pub struct SpacePosition {
-    id: Option<usize>,
+    id: usize,
     x: f32,
     y: f32,
     angle: Angle
@@ -24,8 +42,13 @@ pub struct SpacePosition {
 
 impl SpacePosition {
     // space positions shoul be aware of all possible movements, --> space borders shoul somehow be noted by the position
-    fn new(x: f32, y: f32, angle: Angle) -> Self {
-        Self{id: None, x: 0.0, y: 0.0, angle: Angle::from_degrees(0.0)}
+    fn new() -> Self {
+        // should randomly generate a position
+        Self{id: 0, x: 0.0, y: 0.0, angle: Angle::from_degrees(0.0)}
+    }
+
+    fn build(x: f32, y: f32, angle: Angle) -> Self {
+
     }
 
     fn change(&mut self, rotation_angle: &Angle, movement_speed: f32) {
@@ -38,75 +61,55 @@ impl SpacePosition {
         self.y = self.y + y_angle * movement_speed;
     }
 
-    pub fn rotate_left(&self, rotation_speed:Angle ) ->  Angle {
-        self.angle + rotation_speed
-    }
-
-    pub fn rotate_right(&self, rotation_speed:Angle) -> Angle {
-        self.angle - rotation_speed
-    }
-
-    fn get_id(&self) -> Option<usize> {
-        self.id
+    pub fn rotate(&self, rotation_speed:Angle, rotation_direction: RotationDirection) {
+        self.angle =  match rotation_direction {
+            RotationDirection::Left => self.angle + rotation_speed,
+            RotationDirection::Right => self.angle - rotation_speed
+        }
     }
 }
 
-impl SpaceObject for SpacePosition {}
+impl SpaceObject for SpacePosition {
+    fn get_id(&self) -> usize {
+        self.id
+    }
+
+    fn set_id(&mut self, object_id: usize){
+        self.id = object_id;
+    }
+}
 
 
-
-#[derive(Debug)]
-pub struct SpacePositionsList {
-    positions: HashMap<usize, SpacePosition>,
+pub struct SpacePositionsStorage {
+    positions: HashMap<usize, Box<dyn SpaceObject>>,
     counter: AtomicUsize,
     rng: ThreadRng
 }
-impl SpacePositionsList {
+impl SpacePositionsStorage {
 
-    pub fn new() -> SpacePositionsList {
+    pub fn new() -> SpacePositionsStorage {
         let counter: AtomicUsize = AtomicUsize::new(1);
         let mut rng = rand::thread_rng();
         Self {counter: counter, positions: HashMap::new(), rng: rng}
-    }
-
-    pub fn store(&self, space_position: SpacePosition) -> usize {
-        self.validate(space_position);
-        let uid =self.get_id();
-        self.positions.insert(uid, space_position);
-        uid
-    }
-
-    fn get_id(&self) -> usize {
-        self.counter.fetch_add(1, Ordering::Relaxed)
     }
 
     fn validate(&self, position: SpacePosition) -> bool {
         let ship_plane_space = (x * y) as u32;
         ship_plane_space <= self.plane_space && x >= 0.0 && y >= 0.0
         }
+}
 
-    fn create_position(&self) -> usize {
-        let id =  self.get_id();
-        let position = self.init_position();
-        self.positions.insert(id, position);
-        id
+impl ObjectStorage for SpacePositionsStorage {
+    fn create_id(&self, space_position: &mut Box<dyn SpaceObject>) {
+        let object_id = self.counter.fetch_add(1, Ordering::Relaxed);
+        space_position.set_id(object_id);
+    }
+    fn commit(&mut self, space_object: Box<dyn SpaceObject>) {
+        self.positions.insert(space_object.get_id(), space_object);
     }
 
-    pub fn get_position(&self, id: &Option<usize>) -> &SpacePosition {;
-        if let Option::None = id {
-            let id = self.create_position();
-        }
-        else {
-            let id = id.unwrap();
-        }
-
-        self.positions.get(id).unwrap()
+    fn get_object(&self, object_id: &usize) -> &Box<dyn SpaceObject> {
+        self.positions.get(object_id).unwrap()
     }
 
-    fn init_position(&mut self) -> SpacePosition {
-        let x: f32 = self.rng.gen_range(0.0..self.width);
-        let y: f32 = self.rng.gen_range(0.0..self.height);
-        let angle: f64 = self.rng.gen_range(0.0..360.0);
-        SpacePosition::new(x, y, Angle::from_degrees(angle))
-    }
 }
