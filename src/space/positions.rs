@@ -17,28 +17,14 @@ pub trait SpaceObject {
 }
 
 
-pub trait ObjectStorage {
-    fn create_id(&self, space_object: &mut Box<dyn SpaceObject>);
-
-    fn commit(&mut self, space_object: Box<dyn SpaceObject>);
-
-    fn get_object(&self, object_id: &usize) -> &Box<dyn SpaceObject>;
-
-    fn save(&mut self, mut space_object: Box<dyn SpaceObject>) -> usize {
-        self.create_id(&mut space_object);
-        self.commit(space_object);
-        space_object.get_id()
-    }
-}
-
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpacePosition {
     id: usize,
     x: f32,
     y: f32,
     angle: Angle
 }
+
 
 impl SpacePosition {
     // space positions shoul be aware of all possible movements, --> space borders shoul somehow be noted by the position
@@ -47,13 +33,9 @@ impl SpacePosition {
         Self{id: 0, x: 0.0, y: 0.0, angle: Angle::from_degrees(0.0)}
     }
 
-    fn build(x: f32, y: f32, angle: Angle) -> Self {
-
-    }
-
-    fn change(&mut self, rotation_angle: &Angle, movement_speed: f32) {
-        let mut x_angle = rotation_angle.as_radians().cos() as f32;
-        let mut y_angle = rotation_angle.as_radians().sin() as f32;
+    pub fn change(&mut self, movement_speed: f32) {
+        let mut x_angle = self.angle.as_radians().cos() as f32;
+        let mut y_angle = self.angle.as_radians().sin() as f32;
         x_angle = (x_angle * 100.0).round() / 100.0;
         y_angle = (y_angle * 100.0).round() / 100.0;
 
@@ -79,37 +61,44 @@ impl SpaceObject for SpacePosition {
     }
 }
 
-
+// TOOO: storage might have to be connected from the actual object used to interact with storage
+#[derive(Debug)]
 pub struct SpacePositionsStorage {
-    positions: HashMap<usize, Box<dyn SpaceObject>>,
+    positions: HashMap<usize, SpacePosition>,
     counter: AtomicUsize,
-    rng: ThreadRng
+    space_area:f32
 }
 impl SpacePositionsStorage {
 
     pub fn new() -> SpacePositionsStorage {
         let counter: AtomicUsize = AtomicUsize::new(1);
-        let mut rng = rand::thread_rng();
-        Self {counter: counter, positions: HashMap::new(), rng: rng}
+        Self {counter: counter, positions: HashMap::new(), space_area: 10.0}
     }
 
-    fn validate(&self, position: SpacePosition) -> bool {
-        let ship_plane_space = (x * y) as u32;
-        ship_plane_space <= self.plane_space && x >= 0.0 && y >= 0.0
+    pub fn build(space_area: u32) -> Self {
+        let counter: AtomicUsize = AtomicUsize::new(1);
+        Self {counter: counter, positions: HashMap::new(), space_area: space_area as f32}
+    }
+
+    fn validate(&self, space_position: SpacePosition) {
+        let ship_plane_space = space_position.x * space_position.y;
+        if !(ship_plane_space <= self.space_area && space_position.x >= 0.0 && space_position.y >= 0.0) {
+            panic!("Ship is outside of space area!")
         }
-}
-
-impl ObjectStorage for SpacePositionsStorage {
-    fn create_id(&self, space_position: &mut Box<dyn SpaceObject>) {
-        let object_id = self.counter.fetch_add(1, Ordering::Relaxed);
-        space_position.set_id(object_id);
-    }
-    fn commit(&mut self, space_object: Box<dyn SpaceObject>) {
-        self.positions.insert(space_object.get_id(), space_object);
     }
 
-    fn get_object(&self, object_id: &usize) -> &Box<dyn SpaceObject> {
-        self.positions.get(object_id).unwrap()
+    fn commit(&mut self, space_position: SpacePosition) -> usize {
+        let space_position_id = space_position.get_id();
+        self.positions.insert(space_position_id, space_position);
+        space_position_id
     }
 
+    pub fn save_position(&mut self, space_position: SpacePosition) -> usize {
+        self.validate(space_position);
+        self.commit(space_position)
+    }
+
+    pub fn get_position(&self, object_id: &usize) -> SpacePosition {
+        self.positions.get(object_id).cloned().unwrap()
+    }
 }

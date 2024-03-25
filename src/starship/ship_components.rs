@@ -18,11 +18,18 @@ impl StarshipEngine {
             movement_speed: movement_speed
         }
     }
+
+    pub fn get_rotation_speed(&self) -> Angle {
+        self.rotation_speed
+    }
+
+    pub fn get_movement_speed(&self) -> f32{
+        self.movement_speed
+    }
 }
 
 impl Default for StarshipEngine {
     fn default() -> Self {
-        let position: SpacePosition = SpacePosition::new(0.0, 0.0, 0.0);
         let rotation_speed = 90.0;
         let movement_speed = 10.0;
         Self::new(rotation_speed, movement_speed)

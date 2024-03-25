@@ -1,8 +1,11 @@
 pub mod ship_components;
 pub mod starshiphealth;
-use crate::starship::ship_components::{MovementDirection, StarshipEngine};
-use crate::space::QuadraticSpace;
+use crate::space::positions::{SpacePosition, SpacePositionsStorage, RotationDirection};
+use crate::starship::ship_components::{StarshipEngine};
+use crate::space::{self, QuadraticSpace};
 use crate::starship::starshiphealth::StarshipHealth;
+use measurements::Angle;
+
 
 
 /// Starship provides interaction with the Space Struct. Its components define how the interaction with the
@@ -10,40 +13,25 @@ use crate::starship::starshiphealth::StarshipHealth;
 ///     E.g. The engine determines movement_speed and rotiation_speed and thus implicitly defines how
 ///         positions can be manipulated by a ship
 #[derive(Debug)]
-pub struct StarShip {
-
+pub struct StarShip <'a> {
+    position_id: usize,
     engine: StarshipEngine,
-    starshiphealth: StarshipHealth
+    starshiphealth: StarshipHealth,
+    spacepositionstorage: &'a SpacePositionsStorage
 }
 
-impl StarShip{
+impl StarShip<'_>{
 
-    pub fn new(starshippointer: StarshipEngine) -> Self {
-        Self { engine: starshippointer, starshiphealth: StarshipHealth::new() }
+    pub fn new(rotation_speed: f64, movement_speed: f32) -> Self {
+        let starshipengine = StarshipEngine::new(rotation_speed, movement_speed);
+        Self {position_id: 0,  engine: starshipengine, starshiphealth: StarshipHealth::new() }
     }
 
-    pub fn build(space: &mut QuadraticSpace) -> Self {
-        let angle = 0.0;
-        let rotation_speed = 90.0;
-        let movement_speed = 10.0;
-        let starshippointer = StarshipEngine::new(
-            x, y, angle, rotation_speed, movement_speed, space.widt);
-        StarShip::new(starshippointer)
-    }
-
-    pub fn move_starship(&mut self, movement_direction: MovementDirection) -> bool {
-        let angle = match movement_direction {
-            MovementDirection::Left => self.engine.rotate_pointer_left(),
-            MovementDirection::Right => self.engine.rotate_pointer_right()
-        };
-        let (x, y) = self.engine.move_pointer(&angle);
-        if self.engine.validate_pointer_position(x, y) {
-            self.engine.commit_move(x, y, angle);
-            true
-        }
-        else {
-            false
-        }
+    pub fn move_starship(&mut self, movement_direction: RotationDirection) {
+        let mut space_position = self.spacepositionstorage.get_position(&self.position_id);
+        space_position.rotate(self.engine.get_rotation_speed(), movement_direction);
+        space_position.change(self.engine.get_movement_speed());
+        self.spacepositionstorage.save_position(space_position);
     }
 
     pub fn take_hit(&mut self, damage: u32) -> &StarshipHealth {
@@ -51,16 +39,22 @@ impl StarShip{
         &self.starshiphealth
     }
 
-}
+    pub fn set_position_id(&mut self, space_position_id: usize) {
+        self.position_id = space_position_id;
+    }
 
-impl Default for StarShip {
-    fn default() -> Self {
-        let starshippointer = StarshipEngine::default();
-        Self::new(starshippointer)
+    pub fn get_position_id(&self) -> usize {
+        self.position_id
     }
 }
 
-impl Drop for StarShip {
+impl Default for StarShip <'_> {
+    fn default() -> Self {
+        Self {position_id: 0, engine: StarshipEngine::default(), starshiphealth: StarshipHealth::default() }
+    }
+}
+
+impl Drop for StarShip <'_> {
     fn drop(&mut self) {
         println!("Starship died.")
     }

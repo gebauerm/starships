@@ -13,8 +13,8 @@ fn main() {
     let mut space = QuadraticSpace::new(100.0);
 
     // can be soled over a builder factory, which uses starship_definitions for construction of a ship
-    let mut starship_1 = StarShip::new(rotation_speed, movement_speed)
-    let mut starship_2 = StarShip::new(rotiation_speed, movement_speed)
+    let mut starship_1 = StarShip::new(rotation_speed, movement_speed);
+    let mut starship_2 = StarShip::new(rotiation_speed, movement_speed);
 
     starship_1.register_ship(space); //creates space position in space and stores a reference of it in the ship
     starship_2.register_ship(space);
