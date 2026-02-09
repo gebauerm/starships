@@ -4,9 +4,12 @@ use rand::rngs::ThreadRng;
 use measurements::Angle;
 
 
-enum RotationDirection {
-    Left,
-    Right
+#[derive(Debug)]
+struct SpacePosition {
+    id: usize,
+    x: f32,
+    y: f32,
+    angle: Angle
 }
 
 pub trait SpaceObject {
@@ -17,39 +20,6 @@ pub trait SpaceObject {
 }
 
 
-#[derive(Debug, Clone)]
-pub struct SpacePosition {
-    id: usize,
-    x: f32,
-    y: f32,
-    angle: Angle
-}
-
-
-impl SpacePosition {
-    // space positions shoul be aware of all possible movements, --> space borders shoul somehow be noted by the position
-    fn new() -> Self {
-        // should randomly generate a position
-        Self{id: 0, x: 0.0, y: 0.0, angle: Angle::from_degrees(0.0)}
-    }
-
-    pub fn change(&mut self, movement_speed: f32) {
-        let mut x_angle = self.angle.as_radians().cos() as f32;
-        let mut y_angle = self.angle.as_radians().sin() as f32;
-        x_angle = (x_angle * 100.0).round() / 100.0;
-        y_angle = (y_angle * 100.0).round() / 100.0;
-
-        self.x = self.x + x_angle * movement_speed;
-        self.y = self.y + y_angle * movement_speed;
-    }
-
-    pub fn rotate(&self, rotation_speed:Angle, rotation_direction: RotationDirection) {
-        self.angle =  match rotation_direction {
-            RotationDirection::Left => self.angle + rotation_speed,
-            RotationDirection::Right => self.angle - rotation_speed
-        }
-    }
-}
 
 impl SpaceObject for SpacePosition {
     fn get_id(&self) -> usize {
@@ -93,12 +63,9 @@ impl SpacePositionsStorage {
         space_position_id
     }
 
-    pub fn save_position(&mut self, space_position: SpacePosition) -> usize {
-        self.validate(space_position);
-        self.commit(space_position)
+    pub fn save_position(&mut self, space_position: SpacePosition) {
     }
 
-    pub fn get_position(&self, object_id: &usize) -> SpacePosition {
-        self.positions.get(object_id).cloned().unwrap()
+    pub fn get_position(&self, object_id: &usize) {
     }
 }

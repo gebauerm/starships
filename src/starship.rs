@@ -1,10 +1,7 @@
 pub mod ship_components;
 pub mod starshiphealth;
-use crate::space::positions::{SpacePosition, SpacePositionsStorage, RotationDirection};
-use crate::starship::ship_components::{StarshipEngine};
-use crate::space::{self, QuadraticSpace};
+use crate::starship::ship_components::{StarshipEngine, RotationDirection, StarshipPosition};
 use crate::starship::starshiphealth::StarshipHealth;
-use measurements::Angle;
 
 
 
@@ -13,108 +10,77 @@ use measurements::Angle;
 ///     E.g. The engine determines movement_speed and rotiation_speed and thus implicitly defines how
 ///         positions can be manipulated by a ship
 #[derive(Debug)]
-pub struct StarShip <'a> {
-    position_id: usize,
+pub struct StarShip {
+    position: StarshipPosition,
     engine: StarshipEngine,
-    starshiphealth: StarshipHealth,
-    spacepositionstorage: &'a SpacePositionsStorage
+    starshiphealth: StarshipHealth
 }
 
-impl StarShip<'_>{
+impl StarShip {
 
-    pub fn new(rotation_speed: f64, movement_speed: f32) -> Self {
+    pub fn new(position: StarshipPosition, rotation_speed: f64, movement_speed: f32) -> Self {
         let starshipengine = StarshipEngine::new(rotation_speed, movement_speed);
-        Self {position_id: 0,  engine: starshipengine, starshiphealth: StarshipHealth::new() }
+        Self {position: position,  engine: starshipengine, starshiphealth: StarshipHealth::default() }
     }
 
-    pub fn move_starship(&mut self, movement_direction: RotationDirection) {
-        let mut space_position = self.spacepositionstorage.get_position(&self.position_id);
-        space_position.rotate(self.engine.get_rotation_speed(), movement_direction);
-        space_position.change(self.engine.get_movement_speed());
-        self.spacepositionstorage.save_position(space_position);
+    pub fn move_starship(&mut self, rotation_direction: RotationDirection) {
+        self.position.rotate(self.engine.get_rotation_speed(), rotation_direction);
+        self.position.change(self.engine.get_movement_speed());
     }
 
-    pub fn take_hit(&mut self, damage: u32) -> &StarshipHealth {
-        self.starshiphealth = self.starshiphealth.take_hit(damage);
-        &self.starshiphealth
+    pub fn take_hit(&mut self, damage: u8){
+        self.starshiphealth.take_hit(damage);
     }
 
-    pub fn set_position_id(&mut self, space_position_id: usize) {
-        self.position_id = space_position_id;
-    }
-
-    pub fn get_position_id(&self) -> usize {
-        self.position_id
-    }
+    pub fn get_health(&self) -> u8{
+        self.starshiphealth.get()
+}
 }
 
-impl Default for StarShip <'_> {
+impl Default for StarShip {
     fn default() -> Self {
-        Self {position_id: 0, engine: StarshipEngine::default(), starshiphealth: StarshipHealth::default() }
+        Self {position: StarshipPosition::default(), engine: StarshipEngine::default(), starshiphealth: StarshipHealth::default() }
     }
 }
 
-impl Drop for StarShip <'_> {
+impl Drop for StarShip {
     fn drop(&mut self) {
+        match self.starshiphealth {
+            StarshipHealth::Alive(_) => println!("Starship is still alive."),
+            StarshipHealth::Destroyed =>
         println!("Starship died.")
+        }
     }
 }
+
 
 
 #[cfg(test)]
 mod tests {
-    use crate::starship::starshiphealth::StarshipHealth;
-
-    use super::{StarShip, MovementDirection};
+    use super::{StarShip, RotationDirection};
 
     #[test]
     fn test_ship_valid_movement() {
         // prepare
         let mut starship = StarShip::default();
-        let movement_direction = MovementDirection::Left;
+        let initial_position = starship.position.clone();
+        let movement_direction = RotationDirection::Left;
 
         // perform
-        let moved = starship.move_starship(movement_direction);
+        starship.move_starship(movement_direction);
 
         // assert
-        assert!(moved);
-    }
-
-    #[test]
-    fn test_ship_invalid_movement() {
-        // prepare
-        let mut starship = StarShip::default();
-        let movement_direction = MovementDirection::Right;
-
-        // perform
-        let moved = starship.move_starship(movement_direction);
-
-        // assert
-        assert!(!moved);
+        assert_ne!(initial_position, starship.position);
     }
 
     #[test]
     fn test_ship_take_hit_alive() {
         let mut starship = StarShip::default();
-        let damage = 5;
-        let leftover_hitpoints = 95;
-
-        let starshiphealth = starship.take_hit(damage);
-
-        assert_eq!(starshiphealth.get_hitpoints(), &leftover_hitpoints)
-    }
-
-    #[test]
-    fn test_ship_take_hit_dead() {
-        let mut starship = StarShip::default();
         let damage = 100;
 
-        let starshiphealth = starship.take_hit(damage);
+        starship.take_hit(damage);
 
-        match starshiphealth {
-            StarshipHealth::Alive(hitpoints) => assert!(false),
-            StarshipHealth::Dead => assert!(true)
-        }
+        assert_eq!(starship.get_health(), 0);
     }
 
 }

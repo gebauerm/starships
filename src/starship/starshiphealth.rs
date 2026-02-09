@@ -1,18 +1,43 @@
+use std::u8;
+
+
+
+
 #[derive(Debug)]
-pub struct StarshipHealth {
-    hitpoints: u32
+pub enum StarshipHealth {
+    Alive(u8),
+    Destroyed
 }
 
 impl StarshipHealth {
-    pub fn new(hitpoints: u32) -> Self {
-        Self {hitpoints}
+    pub fn new(hitpoints: u8) -> Self {
+        Self::Alive(hitpoints)
     }
 
-    // what do we do when ship is dead? --> delete it automatically?
+    pub fn take_hit(&mut self, damage: u8) {
+        match self {
+            StarshipHealth::Alive(hitpoints) => {
+                if *hitpoints > damage {
+                    *hitpoints -= damage;
+                } else {
+                    *self = StarshipHealth::Destroyed;
+                }
+            },
+            StarshipHealth::Destroyed => {}
+        }
+    }
+
+    pub fn get(&self) -> u8 {
+        match self {
+            StarshipHealth::Alive(hitpoints) => *hitpoints,
+            StarshipHealth::Destroyed => 0
+        }
+    }
+
 }
 
 impl Default for StarshipHealth {
     fn default() -> Self {
-        Self { hitpoints: 100 }
+        Self::Alive(100)
     }
 }

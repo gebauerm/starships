@@ -1,19 +1,8 @@
 pub mod positions;
 use rand::Rng;
-use rand::rngs;
-use crate::space::positions::{SpacePositionsStorage, SpacePosition};
-use crate::starship::StarShip;
+use crate::space::positions::{SpacePositionsStorage};
 
 
-
-
-
-
-trait Space {
-    pub fn get_position(position_id: usize) -> &SpacePosition {}
-
-    pub fn store_position(positions: SpacePosition) -> usize {}
-}
 
 
 #[derive(Debug)]
@@ -21,27 +10,30 @@ pub struct QuadraticSpace {
     // we are currently assuming a space is a flat quadratic plane (2D)
     width: f32,
     height: f32,
-    space_positions: SpacePositionsStorage,
-    // TODO: random number generator has to move out of the Space
-    rng: rngs::ThreadRng,
+    space_positions: SpacePositionsStorage
 }
 
 impl QuadraticSpace {
     pub fn new(width: f32) -> Self {
-        let rng = rand::thread_rng();
-        Self { width: width, height: width.clone(), rng: rng, space_positions: SpacePositionsStorage::new() }
+        Self { width: width, height: width.clone(), space_positions: SpacePositionsStorage::new() }
     }
 
-    pub fn register_ship(&mut self, starship: &mut StarShip) {
-        let space_position = SpacePosition::new(self.rng);
-        let space_position_id = self.space_positions.save_position(space_position);
-        starship.set_position_id(&space_position_id);
+    pub fn get_width(&self) -> f32 {
+        self.width
+    }
+
+    pub fn get_height(&self) -> f32 {
+        self.height
+    }
+
+    pub fn generate_position(&self) -> (f32, f32, f64) {
+        let mut rng = rand::thread_rng();
+        let x = rng.gen_range(0.0..self.width);
+        let y = rng.gen_range(0.0..self.height);
+        let angle = rng.gen_range(0.0..360.0);
+        (x, y, angle)
     }
 }
-
-impl Space for QuadraticSpace {}
-
-
 
 
 
