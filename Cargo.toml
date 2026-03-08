@@ -1,11 +1,10 @@
 [package]
-name = "starships"
+name = "astroblast_ex"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
-measurements = "0.11.0"
-rand = "0.8.5"
-rand_chacha = "0.10.0"
+getrandom = "0.4.1"
+ggez = "0.10.0-rc0"
+oorandom = "11.1.5"
+winit = "0.30.12"
