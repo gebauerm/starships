@@ -11,11 +11,11 @@ struct Position(Vec2);
 struct Facing(Quat);
 
 #[derive(Component)]
-#[require(Position)]
+#[require(Position, Facing)]
 struct Attacker;
 
 #[derive(Component)]
-#[require(Position)]
+#[require(Position, Facing)]
 struct Defender;
 
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
