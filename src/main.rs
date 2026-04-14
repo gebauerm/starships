@@ -6,6 +6,9 @@ const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
 const SHIP_THRUST: f32 = 0.2;
 const MAX_SHIP_VELOCITY: f32 = 10.;
 
+const MAX_SHOT_DELAY: f32 = 2.;
+const MAX_SHOT_VELOCITY: f32 = 12.;
+
 #[derive(Component, Default)]
 #[require(Transform)]
 struct Position(Vec2);
@@ -21,6 +24,19 @@ struct Thrust(Vec2);
 #[derive(Component, Default)]
 struct Velocity(Vec2);
 
+impl Velocity {
+    fn from_facing(facing: &Facing) -> Self {
+        let (axis, angle) = facing.0.to_axis_angle();
+        let angle = angle * axis.z;
+        let thrust = Vec2::from_angle(angle).rotate(Vec2::Y).normalize() * MAX_SHOT_VELOCITY;
+        Self(thrust)
+    }
+}
+
+#[derive(Component, Default)]
+#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO))]
+struct Shot;
+
 #[derive(Component, Default)]
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO))]
 struct Ship;
@@ -32,22 +48,22 @@ struct Player {
     reverse: KeyCode,
     left: KeyCode,
     right: KeyCode,
-    shoot: KeyCode,
+    fire: KeyCode,
     thrust_input: f32,
     rotation_input: f32,
-    shoot_input: bool,
+    fire_input: bool,
 }
 impl Player {
-    fn new(acc: KeyCode, reverse: KeyCode, left: KeyCode, right: KeyCode, shoot: KeyCode) -> Self {
+    fn new(acc: KeyCode, reverse: KeyCode, left: KeyCode, right: KeyCode, fire: KeyCode) -> Self {
         Self {
             acc,
             reverse,
             left,
             right,
-            shoot,
+            fire,
             thrust_input: 0.,
             rotation_input: 0.,
-            shoot_input: false,
+            fire_input: false,
         }
     }
 }
@@ -114,25 +130,26 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
 
-fn enforce_movement_limits(window: Single<&Window>, ship_positions: Query<&mut Position, With<Ship>>) {
+fn enforce_movement_limits(
+    window: Single<&Window>,
+    ship_positions: Query<&mut Position, With<Ship>>,
+) {
     let max_window_height = window.resolution.height() / 2.;
     let max_window_width = window.resolution.width() / 2.;
 
     for mut ship_position in ship_positions {
         if ship_position.0.x > max_window_width {
-            ship_position.0.x -= window.resolution.width() ;
+            ship_position.0.x -= window.resolution.width();
         } else if ship_position.0.x < -max_window_width {
-            ship_position.0.x += window.resolution.width() ;
+            ship_position.0.x += window.resolution.width();
         }
 
         if ship_position.0.y > max_window_height {
-            ship_position.0.y -= window.resolution.height() ;
+            ship_position.0.y -= window.resolution.height();
         } else if ship_position.0.y < -max_window_height {
-            ship_position.0.y += window.resolution.height() ;
+            ship_position.0.y += window.resolution.height();
         }
-
     }
-
 }
 
 fn handle_player_inputs(
@@ -154,6 +171,10 @@ fn handle_player_inputs(
             player.rotation_input = -1.;
         } else {
             player.rotation_input = 0.;
+        }
+
+        if keyboard_input.pressed(player.fire) {
+            player.fire_input = true;
         }
     }
 }
@@ -181,6 +202,27 @@ fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
     }
 }
 
+fn register_shots(
+    mut commands: Commands,
+    variables: Query<(&Position, &Facing, &mut Player)>,
+    asset_server: Res<AssetServer>
+) {
+    let attacker_img = asset_server.load("shot.png");
+    // TODO: implement a timer: https://bevy-cheatbook.github.io/fundamentals/time.html
+    for (position, facing, mut player) in variables {
+
+        if player.fire_input {
+            commands.spawn((
+                Shot,
+                Position(position.0),
+                Velocity::from_facing(facing),
+                Sprite::from_image(attacker_img.clone()),
+            ));
+        player.fire_input = false;
+        }
+    }
+}
+
 fn sprite_movement() {
     // https://docs.rs/bevy/0.18.1/src/move_sprite/move_sprite.rs.html#23
     // https://bevy.org/examples/2d-rendering/rotation/
@@ -195,9 +237,10 @@ fn main() {
             (
                 project_positions,
                 handle_player_inputs.before(update_ship_velocity),
+                register_shots.after(handle_player_inputs),
                 update_ship_velocity.before(project_positions),
                 update_positions.after(update_ship_velocity),
-                enforce_movement_limits.after(update_positions)
+                enforce_movement_limits.after(update_positions),
             ),
         )
         .run();
