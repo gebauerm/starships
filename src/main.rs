@@ -1,4 +1,3 @@
-use bevy::input::keyboard::Key;
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
@@ -27,25 +26,39 @@ struct Velocity(Vec2);
 struct Ship;
 
 #[derive(Component)]
+#[require(Ship)]
+struct Player {
+    acc: KeyCode,
+    reverse: KeyCode,
+    left: KeyCode,
+    right: KeyCode,
+    shoot: KeyCode,
+    thrust_input: f32,
+    rotation_input: f32,
+    shoot_input: bool,
+}
+impl Player {
+    fn new(acc: KeyCode, reverse: KeyCode, left: KeyCode, right: KeyCode, shoot: KeyCode) -> Self {
+        Self {
+            acc,
+            reverse,
+            left,
+            right,
+            shoot,
+            thrust_input: 0.,
+            rotation_input: 0.,
+            shoot_input: false,
+        }
+    }
+}
+
+#[derive(Component)]
 //#[require(Ship)]
 struct Attacker;
 
 #[derive(Component)]
 //#[require(Ship)]
 struct Defender;
-
-
-enum ShipThrust {
-    ON,
-    OFF,
-    BACK
-}
-enum ShipRotation {
-    LEFT,
-    RIGHT,
-    IDLE
-}
-
 
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
     for (mut transform, position, facing) in &mut positionables {
@@ -68,6 +81,13 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
 
     commands.spawn((
         Attacker,
+        Player::new(
+            KeyCode::ArrowUp,
+            KeyCode::ArrowDown,
+            KeyCode::ArrowLeft,
+            KeyCode::ArrowRight,
+            KeyCode::Numpad0,
+        ),
         Ship,
         Sprite::from_image(attacker_img.clone()),
         Position(attacker_pos),
@@ -76,6 +96,13 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
 
     commands.spawn((
         Defender,
+        Player::new(
+            KeyCode::KeyW,
+            KeyCode::KeyS,
+            KeyCode::KeyA,
+            KeyCode::KeyD,
+            KeyCode::Space,
+        ),
         Ship,
         Sprite::from_image(attacker_img),
         Position(defender_pos),
@@ -87,42 +114,60 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
 
+fn enforce_movement_limits(window: Single<&Window>, ship_positions: Query<&mut Position, With<Ship>>) {
+    let max_window_height = window.resolution.height() / 2.;
+    let max_window_width = window.resolution.width() / 2.;
 
-fn manage_movement_boundaries()
-{
+    for mut ship_position in ship_positions {
+        if ship_position.0.x > max_window_width {
+            ship_position.0.x -= window.resolution.width() ;
+        } else if ship_position.0.x < -max_window_width {
+            ship_position.0.x += window.resolution.width() ;
+        }
+
+        if ship_position.0.y > max_window_height {
+            ship_position.0.y -= window.resolution.height() ;
+        } else if ship_position.0.y < -max_window_height {
+            ship_position.0.y += window.resolution.height() ;
+        }
+
+    }
 
 }
 
+fn handle_player_inputs(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    players: Query<&mut Player, With<Ship>>,
+) {
+    for mut player in players {
+        if keyboard_input.pressed(player.acc) {
+            player.thrust_input = 1.;
+        } else if keyboard_input.pressed(player.reverse) {
+            player.thrust_input = 0.;
+        } else {
+            player.thrust_input = 0.;
+        }
 
-fn update_ship_velocity(keyboard_input: Res<ButtonInput<KeyCode>>,
-    velocity_variables: Query<(&mut Velocity, &mut Thrust, &mut Facing), With<Ship>>) {
-
-    let mut ship_thrust_input: f32 = 0.0;
-    let mut ship_rotation_input: f32 = 0.0;
-    if keyboard_input.pressed(KeyCode::ArrowUp) {
-        ship_thrust_input = 1.;
-    } else if keyboard_input.pressed(KeyCode::ArrowDown) {
-        ship_thrust_input = 0.;
-    } else {
-        ship_thrust_input = 0.;
+        if keyboard_input.pressed(player.left) {
+            player.rotation_input = 1.;
+        } else if keyboard_input.pressed(player.right) {
+            player.rotation_input = -1.;
+        } else {
+            player.rotation_input = 0.;
+        }
     }
+}
 
-    if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        ship_rotation_input = 1.;
-    } else if keyboard_input.pressed(KeyCode::ArrowRight) {
-        ship_rotation_input = -1.;
-    }
-    else {
-        ship_rotation_input = 0.;
-    }
-
-    for (mut velocity, mut thrust, mut facing) in velocity_variables {
+fn update_ship_velocity(
+    variables: Query<(&mut Velocity, &mut Thrust, &mut Facing, &Player), With<Ship>>,
+) {
+    for (mut velocity, mut thrust, mut facing, player) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
         let mut angle = angle * axis.z;
-        angle += SHIP_ROTATION_SPEED * ship_rotation_input;
+        angle += SHIP_ROTATION_SPEED * player.rotation_input;
         facing.0 = Quat::from_rotation_z(angle);
 
-        thrust.0 = Vec2::from_angle(angle).rotate(Vec2::Y) * SHIP_THRUST * ship_thrust_input;
+        thrust.0 = Vec2::from_angle(angle).rotate(Vec2::Y) * SHIP_THRUST * player.thrust_input;
         velocity.0 += thrust.0;
         if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
@@ -130,15 +175,11 @@ fn update_ship_velocity(keyboard_input: Res<ButtonInput<KeyCode>>,
     }
 }
 
-
-fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>)
-{
+fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
     for (mut position, velocity) in movement_variables {
         position.0 += velocity.0;
     }
 }
-
-
 
 fn sprite_movement() {
     // https://docs.rs/bevy/0.18.1/src/move_sprite/move_sprite.rs.html#23
@@ -149,8 +190,15 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, (spawn_camera, spawn_players))
-        .add_systems(FixedUpdate, (project_positions, update_ship_velocity.before(project_positions),
-            update_positions.after(update_ship_velocity)))
+        .add_systems(
+            FixedUpdate,
+            (
+                project_positions,
+                handle_player_inputs.before(update_ship_velocity),
+                update_ship_velocity.before(project_positions),
+                update_positions.after(update_ship_velocity),
+                enforce_movement_limits.after(update_positions)
+            ),
+        )
         .run();
 }
-
