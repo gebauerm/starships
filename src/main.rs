@@ -76,6 +76,12 @@ struct Attacker;
 //#[require(Ship)]
 struct Defender;
 
+#[derive(EntityEvent)]
+struct Shoot {
+    #[event_target]
+    shooter:Entity
+}
+
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
     for (mut transform, position, facing) in &mut positionables {
         // Extend is going to turn this from a Vec2 to a Vec3
@@ -153,10 +159,11 @@ fn enforce_movement_limits(
 }
 
 fn handle_player_inputs(
+    mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    players: Query<&mut Player, With<Ship>>,
+    players: Query<(&mut Player, Entity), With<Ship>>,
 ) {
-    for mut player in players {
+    for (mut player, entity) in players {
         if keyboard_input.pressed(player.acc) {
             player.thrust_input = 1.;
         } else if keyboard_input.pressed(player.reverse) {
@@ -174,7 +181,8 @@ fn handle_player_inputs(
         }
 
         if keyboard_input.pressed(player.fire) {
-            player.fire_input = true;
+            commands.trigger(Shoot {shooter: entity});
+            // player.fire_input = true;
         }
     }
 }
@@ -202,25 +210,24 @@ fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
     }
 }
 
-fn register_shots(
+fn spawn_shots(
+    event: On<Shoot>,
     mut commands: Commands,
-    variables: Query<(&Position, &Facing, &mut Player)>,
+    variables: Query<(&Position, &Facing)>,
     asset_server: Res<AssetServer>
 ) {
     let attacker_img = asset_server.load("shot.png");
     // TODO: implement a timer: https://bevy-cheatbook.github.io/fundamentals/time.html
-    for (position, facing, mut player) in variables {
+    // TODO: default Sprite position seems to be in the middle - needs to be changed
+    let (position, facing) = variables.get(event.shooter).unwrap();
 
-        if player.fire_input {
             commands.spawn((
                 Shot,
-                Position(position.0),
+                Transform::from_translation(position.0.extend(0.)),
+                Position(position.0.clone()),
                 Velocity::from_facing(facing),
                 Sprite::from_image(attacker_img.clone()),
             ));
-        player.fire_input = false;
-        }
-    }
 }
 
 fn sprite_movement() {
@@ -237,11 +244,11 @@ fn main() {
             (
                 project_positions,
                 handle_player_inputs.before(update_ship_velocity),
-                register_shots.after(handle_player_inputs),
                 update_ship_velocity.before(project_positions),
                 update_positions.after(update_ship_velocity),
                 enforce_movement_limits.after(update_positions),
             ),
         )
+        .add_observer(spawn_shots)
         .run();
 }
