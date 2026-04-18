@@ -1,12 +1,13 @@
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
+use std::time::Duration;
 
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
 const SHIP_THRUST: f32 = 0.2;
 const MAX_SHIP_VELOCITY: f32 = 10.;
 
-const MAX_SHOT_DELAY: f32 = 2.;
+const MAX_SHOT_DELAY: f32 = 1.;
 const MAX_SHOT_VELOCITY: f32 = 12.;
 
 #[derive(Component, Default)]
@@ -51,7 +52,6 @@ struct Player {
     fire: KeyCode,
     thrust_input: f32,
     rotation_input: f32,
-    fire_input: bool,
 }
 impl Player {
     fn new(acc: KeyCode, reverse: KeyCode, left: KeyCode, right: KeyCode, fire: KeyCode) -> Self {
@@ -63,7 +63,6 @@ impl Player {
             fire,
             thrust_input: 0.,
             rotation_input: 0.,
-            fire_input: false,
         }
     }
 }
@@ -79,7 +78,12 @@ struct Defender;
 #[derive(EntityEvent)]
 struct Shoot {
     #[event_target]
-    shooter:Entity
+    shooter: Entity,
+}
+
+#[derive(Component)]
+struct ShootDelayTimer {
+    timer: Timer,
 }
 
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
@@ -87,6 +91,12 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
         // Extend is going to turn this from a Vec2 to a Vec3
         transform.translation = position.0.extend(0.);
         transform.rotation = facing.0;
+    }
+}
+
+fn tick_timers(timers: Query<&mut ShootDelayTimer, With<Player>>, time: Res<Time>) {
+    for mut timer in timers {
+        timer.timer.tick(time.delta());
     }
 }
 
@@ -181,7 +191,7 @@ fn handle_player_inputs(
         }
 
         if keyboard_input.pressed(player.fire) {
-            commands.trigger(Shoot {shooter: entity});
+            commands.trigger(Shoot { shooter: entity });
             // player.fire_input = true;
         }
     }
@@ -213,26 +223,32 @@ fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
 fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
-    variables: Query<(&Position, &Facing)>,
-    asset_server: Res<AssetServer>
+    mut variables: Query<(&Position, &Facing, Option<&mut ShootDelayTimer>)>,
+    asset_server: Res<AssetServer>,
 ) {
     let attacker_img = asset_server.load("shot.png");
     // TODO: implement a timer: https://bevy-cheatbook.github.io/fundamentals/time.html
-    // TODO: default Sprite position seems to be in the middle - needs to be changed
-    let (position, facing) = variables.get(event.shooter).unwrap();
+    let (position, facing, config) = variables.get_mut(event.shooter).unwrap();
 
-            commands.spawn((
-                Shot,
-                Transform::from_translation(position.0.extend(0.)),
-                Position(position.0.clone()),
-                Velocity::from_facing(facing),
-                Sprite::from_image(attacker_img.clone()),
-            ));
-}
-
-fn sprite_movement() {
-    // https://docs.rs/bevy/0.18.1/src/move_sprite/move_sprite.rs.html#23
-    // https://bevy.org/examples/2d-rendering/rotation/
+    if let Some(mut timer) = config {
+        if !timer.timer.is_finished() {
+            info!("Cooldown still active!");
+            return;
+        } else {
+            timer.timer.reset();
+        }
+    } else {
+        commands.entity(event.shooter).insert(ShootDelayTimer {
+            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
+        });
+    }
+    commands.spawn((
+        Shot,
+        Transform::from_translation(position.0.extend(0.)),
+        Position(position.0.clone()),
+        Velocity::from_facing(facing),
+        Sprite::from_image(attacker_img.clone()),
+    ));
 }
 
 fn main() {
@@ -243,6 +259,7 @@ fn main() {
             FixedUpdate,
             (
                 project_positions,
+                tick_timers.before(handle_player_inputs),
                 handle_player_inputs.before(update_ship_velocity),
                 update_ship_velocity.before(project_positions),
                 update_positions.after(update_ship_velocity),
