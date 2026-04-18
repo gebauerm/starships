@@ -5,7 +5,8 @@ use std::f32::consts::FRAC_PI_2;
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
 const SHIP_THRUST: f32 = 0.2;
 const SHIP_HEALTH: f32 = 100.;
-const MAX_SHIP_VELOCITY: f32 = 10.;
+const SHIP_SIZE: f32 = 8.;
+const MAX_SHIP_VELOCITY: f32 = 4.;
 
 const MAX_SHOT_DELAY: f32 = 1.;
 const MAX_SHOT_VELOCITY: f32 = 12.;
@@ -29,6 +30,7 @@ struct Thrust(Vec2);
 struct Velocity(Vec2);
 
 impl Velocity {
+    // This is used to initialize shots
     fn from_facing(facing: &Facing) -> Self {
         let (axis, angle) = facing.0.to_axis_angle();
         let angle = angle * axis.z;
@@ -41,9 +43,28 @@ impl Velocity {
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO))]
 struct Shot;
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum Collision {
+    FRONT,
+    BACK,
+    SIDE,
+}
+
 #[derive(Component, Default)]
-#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO))]
+struct Collider(Rectangle);
+impl Collider {
+    fn half_size(&self) -> Vec2 {
+        self.0.half_size
+    }
+}
+
+#[derive(Component, Default)]
+#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), ShipHealth = ShipHealth(SHIP_HEALTH),
+Collider = Collider(Rectangle::new(SHIP_SIZE, SHIP_SIZE)))]
 struct Ship;
+
+#[derive(Component, Default)]
+struct PlayerColor(Color);
 
 #[derive(Component)]
 #[require(Ship)]
@@ -71,11 +92,23 @@ impl Player {
 }
 
 #[derive(Component)]
-//#[require(Ship)]
+#[require(Player= Player::new(
+            KeyCode::ArrowUp,
+            KeyCode::ArrowDown,
+            KeyCode::ArrowLeft,
+            KeyCode::ArrowRight,
+            KeyCode::Numpad0,
+        ), PlayerColor(Color::srgb(1., 0.5, 0.)))]
 struct Attacker;
 
 #[derive(Component)]
-//#[require(Ship)]
+#[require(Player = Player::new(
+            KeyCode::KeyW,
+            KeyCode::KeyS,
+            KeyCode::KeyA,
+            KeyCode::KeyD,
+            KeyCode::Space
+        ), PlayerColor(Color::srgb(0.1, 0.7, 1.)))]
 struct Defender;
 
 #[derive(EntityEvent)]
@@ -114,39 +147,35 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
     let attacker_facing =
         Quat::from_rotation_z((defender_pos - attacker_pos).to_angle() - FRAC_PI_2);
 
+    // TODO: color setting needs refactoring (keep the coloring of the shots in mind)
+    let attacker_color = PlayerColor(Color::srgb(1., 0.5, 0.));
+    let defender_color = PlayerColor(Color::srgb(0., 0.5, 1.));
+    let mut attacker_sprite = Sprite::from_image(attacker_img.clone());
+    attacker_sprite.color = attacker_color.0;
+    let mut defender_sprite = Sprite::from_image(attacker_img);
+    defender_sprite.color = defender_color.0;
+
     commands.spawn((
         Attacker,
-        Player::new(
-            KeyCode::ArrowUp,
-            KeyCode::ArrowDown,
-            KeyCode::ArrowLeft,
-            KeyCode::ArrowRight,
-            KeyCode::Numpad0,
-        ),
         Ship,
-        Sprite::from_image(attacker_img.clone()),
+        attacker_sprite,
         Position(attacker_pos),
         Facing(attacker_facing.clone()),
         ShootDelayTimer {
-            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once) },
+            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
+        },
         ShipHealth(SHIP_HEALTH),
     ));
 
     commands.spawn((
         Defender,
-        Player::new(
-            KeyCode::KeyW,
-            KeyCode::KeyS,
-            KeyCode::KeyA,
-            KeyCode::KeyD,
-            KeyCode::Space,
-        ),
         Ship,
-        Sprite::from_image(attacker_img),
+        defender_sprite,
         Position(defender_pos),
         Facing(attacker_facing.inverse()),
         ShootDelayTimer {
-            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once) },
+            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
+        },
         ShipHealth(SHIP_HEALTH),
     ));
 }
@@ -201,7 +230,6 @@ fn handle_player_inputs(
 
         if keyboard_input.pressed(player.fire) {
             commands.trigger(Shoot { shooter: entity });
-            // player.fire_input = true;
         }
     }
 }
@@ -232,23 +260,27 @@ fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
 fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
-    mut variables: Query<(&Position, &Facing, &mut ShootDelayTimer)>,
+    mut variables: Query<(&Position, &Facing, &mut ShootDelayTimer, &PlayerColor), With<Player>>,
     asset_server: Res<AssetServer>,
 ) {
     let attacker_img = asset_server.load("shot.png");
-    if let Ok((position, facing, mut config)) = variables.get_mut(event.shooter) {
+    let mut sprite = Sprite::from_image(attacker_img);
+    if let Ok((position, facing, mut config, player_color)) = variables.get_mut(event.shooter) {
         if config.timer.is_finished() {
+            sprite.color = player_color.0;
             commands.spawn((
-            Shot,
-            Transform::from_translation(position.0.extend(0.)),
-            Position(position.0.clone()),
-            Velocity::from_facing(facing),
-            Sprite::from_image(attacker_img.clone()),
-    ));
-    config.timer.reset();
+                Shot,
+                Transform::from_translation(position.0.extend(0.)),
+                Position(position.0.clone()),
+                Velocity::from_facing(facing),
+                sprite,
+            ));
+            config.timer.reset();
         }
     }
 }
+
+fn handle_shot_hits() {}
 
 fn main() {
     App::new()
