@@ -1,10 +1,10 @@
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
-use std::time::Duration;
 
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
 const SHIP_THRUST: f32 = 0.2;
+const SHIP_HEALTH: f32 = 100.;
 const MAX_SHIP_VELOCITY: f32 = 10.;
 
 const MAX_SHOT_DELAY: f32 = 1.;
@@ -17,6 +17,9 @@ struct Position(Vec2);
 #[derive(Component, Default)]
 #[require(Transform)]
 struct Facing(Quat);
+
+#[derive(Component, Default)]
+struct ShipHealth(f32);
 
 #[derive(Component, Default)]
 #[require(Facing)]
@@ -124,6 +127,9 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         Sprite::from_image(attacker_img.clone()),
         Position(attacker_pos),
         Facing(attacker_facing.clone()),
+        ShootDelayTimer {
+            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once) },
+        ShipHealth(SHIP_HEALTH),
     ));
 
     commands.spawn((
@@ -139,6 +145,9 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         Sprite::from_image(attacker_img),
         Position(defender_pos),
         Facing(attacker_facing.inverse()),
+        ShootDelayTimer {
+            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once) },
+        ShipHealth(SHIP_HEALTH),
     ));
 }
 
@@ -223,32 +232,22 @@ fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
 fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
-    mut variables: Query<(&Position, &Facing, Option<&mut ShootDelayTimer>)>,
+    mut variables: Query<(&Position, &Facing, &mut ShootDelayTimer)>,
     asset_server: Res<AssetServer>,
 ) {
     let attacker_img = asset_server.load("shot.png");
-    // TODO: implement a timer: https://bevy-cheatbook.github.io/fundamentals/time.html
-    let (position, facing, config) = variables.get_mut(event.shooter).unwrap();
-
-    if let Some(mut timer) = config {
-        if !timer.timer.is_finished() {
-            info!("Cooldown still active!");
-            return;
-        } else {
-            timer.timer.reset();
-        }
-    } else {
-        commands.entity(event.shooter).insert(ShootDelayTimer {
-            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
-        });
-    }
-    commands.spawn((
-        Shot,
-        Transform::from_translation(position.0.extend(0.)),
-        Position(position.0.clone()),
-        Velocity::from_facing(facing),
-        Sprite::from_image(attacker_img.clone()),
+    if let Ok((position, facing, mut config)) = variables.get_mut(event.shooter) {
+        if config.timer.is_finished() {
+            commands.spawn((
+            Shot,
+            Transform::from_translation(position.0.extend(0.)),
+            Position(position.0.clone()),
+            Velocity::from_facing(facing),
+            Sprite::from_image(attacker_img.clone()),
     ));
+    config.timer.reset();
+        }
+    }
 }
 
 fn main() {
