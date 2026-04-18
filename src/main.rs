@@ -5,11 +5,12 @@ use std::f32::consts::FRAC_PI_2;
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
 const SHIP_THRUST: f32 = 0.2;
 const SHIP_HEALTH: f32 = 100.;
-const SHIP_SIZE: f32 = 8.;
+const SHIP_SIZE: f32 =30.;
 const MAX_SHIP_VELOCITY: f32 = 4.;
 
-const MAX_SHOT_DELAY: f32 = 1.;
+const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
+const SHOT_SIZE: f32 = 25.;
 
 #[derive(Component, Default)]
 #[require(Transform)]
@@ -140,7 +141,9 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
     let half_window_size = window.resolution.size() / 2.;
     let padding = 20.;
 
-    let attacker_img = asset_server.load("player.png");
+    let ship_img = asset_server.load("player.png");
+    let mut sprite = Sprite::from_image(ship_img.clone());
+    sprite.custom_size = Some(Vec2::new(SHIP_SIZE, SHIP_SIZE));
 
     let attacker_pos = Vec2::new(half_window_size.x - padding, 0.);
     let defender_pos = Vec2::new(-half_window_size.x + padding, 0.);
@@ -150,9 +153,9 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
     // TODO: color setting needs refactoring (keep the coloring of the shots in mind)
     let attacker_color = PlayerColor(Color::srgb(1., 0.5, 0.));
     let defender_color = PlayerColor(Color::srgb(0., 0.5, 1.));
-    let mut attacker_sprite = Sprite::from_image(attacker_img.clone());
+    let mut attacker_sprite = sprite.clone();
     attacker_sprite.color = attacker_color.0;
-    let mut defender_sprite = Sprite::from_image(attacker_img);
+    let mut defender_sprite = sprite;
     defender_sprite.color = defender_color.0;
 
     commands.spawn((
@@ -265,6 +268,7 @@ fn spawn_shots(
 ) {
     let attacker_img = asset_server.load("shot.png");
     let mut sprite = Sprite::from_image(attacker_img);
+    sprite.custom_size = Some(Vec2::new(SHOT_SIZE, SHOT_SIZE));
     if let Ok((position, facing, mut config, player_color)) = variables.get_mut(event.shooter) {
         if config.timer.is_finished() {
             sprite.color = player_color.0;
@@ -280,7 +284,32 @@ fn spawn_shots(
     }
 }
 
-fn handle_shot_hits() {}
+// fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
+//     if !player.intersects(&shot) {
+//         return None;
+//     }
+
+//     let closes_point = player.closest_point(shot.center());
+
+// }
+
+// fn handle_shot_hits(
+//     player_variables: Query<(&Position, &Collider, &mut ShipHealth), With<Player>>,
+//     shot_variables: Query<(&Position, &Collider), With<Shot>>,
+// ) {
+//     for (player_positions, player_collider, ship_health) in player_variables {
+//         for (shot_positions, shot_collider) in shot_variables
+//         {
+//             if let Some(collisions) = collision_with_shot(
+//                 Aabb2d::new(player_position.0, player_collider.half_size()),
+//                 Aabb2d::new(shot_positions.0, shot_collider.half_size())
+//             )
+//             match {
+
+//             }
+//         }
+//     }
+// }
 
 fn main() {
     App::new()
