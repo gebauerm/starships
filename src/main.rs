@@ -1,3 +1,6 @@
+// TODO: add boost system for movement
+// TODO: add floating objects for level building
+// TODO: add winnig points
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
@@ -7,6 +10,7 @@ const SHIP_THRUST: f32 = 0.2;
 const SHIP_HEALTH: f32 = 100.;
 const SHIP_SIZE: f32 = 30.;
 const MAX_SHIP_VELOCITY: f32 = 4.;
+const SHIP_BREAKS: f32 = SHIP_THRUST * 0.3;
 
 const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
@@ -260,7 +264,7 @@ fn update_ship_velocity(
 
         thrust.0 = Vec2::from_angle(angle).rotate(Vec2::Y) * SHIP_THRUST * player.thrust_input;
         if player.thrust_input < 0. {
-            thrust.0 = velocity.0.normalize() * SHIP_THRUST / 2. * -1.;
+            thrust.0 = velocity.0.normalize() * SHIP_BREAKS * player.thrust_input;
         }
         velocity.0 += thrust.0;
         if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
