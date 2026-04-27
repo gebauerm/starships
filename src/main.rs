@@ -16,6 +16,7 @@ const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
 const SHOT_SIZE: f32 = 25.;
 const SHOT_DMG: f32 = 40.;
+const SHOOT_OFFSET: f32 = 10.;
 
 #[derive(Component, Default)]
 #[require(Transform)]
@@ -293,7 +294,7 @@ fn spawn_shots(
         if config.timer.is_finished() {
             sprite.color = player_color.0;
             let position =
-                position.0 + vec_from_angle(facing.to_angle()) * (SHIP_SIZE / 2. + 1.);
+                position.0 + vec_from_angle(facing.to_angle()) * (SHIP_SIZE / 2. + SHOOT_OFFSET);
             commands.spawn((
                 Shot,
                 Transform::from_translation(position.extend(0.)),
