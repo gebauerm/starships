@@ -11,6 +11,7 @@ const SHIP_HEALTH: f32 = 100.;
 const SHIP_SIZE: f32 = 30.;
 const MAX_SHIP_VELOCITY: f32 = 4.;
 const SHIP_BREAKS: f32 = SHIP_THRUST * 0.3;
+const MAX_BOOST_DELAY: f32 = 15.;
 
 const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
@@ -74,7 +75,7 @@ impl Collider {
 
 #[derive(Component, Default)]
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Health = Health(SHIP_HEALTH),
-Collider = Collider(Rectangle::new(SHIP_SIZE-10., SHIP_SIZE-10.)))]
+Collider = Collider(Rectangle::new(SHIP_SIZE-10., SHIP_SIZE-10.)), ShootDelayTimer= ShootDelayTimer::default(), BoostDelayTimer = BoostDelayTimer::default())]
 struct Ship;
 
 #[derive(Component, Default)]
@@ -88,19 +89,30 @@ struct Player {
     left: KeyCode,
     right: KeyCode,
     fire: KeyCode,
+    boost: KeyCode,
     thrust_input: f32,
     rotation_input: f32,
+    boost_input: bool
 }
 impl Player {
-    fn new(acc: KeyCode, reverse: KeyCode, left: KeyCode, right: KeyCode, fire: KeyCode) -> Self {
+    fn new(
+        acc: KeyCode,
+        reverse: KeyCode,
+        left: KeyCode,
+        right: KeyCode,
+        fire: KeyCode,
+        boost: KeyCode,
+    ) -> Self {
         Self {
             acc,
             reverse,
             left,
             right,
             fire,
+            boost,
             thrust_input: 0.,
             rotation_input: 0.,
+            boost_input: false,
         }
     }
 }
@@ -112,6 +124,7 @@ impl Player {
             KeyCode::ArrowLeft,
             KeyCode::ArrowRight,
             KeyCode::Numpad0,
+            KeyCode::ShiftLeft,
         ), PlayerColor(Color::srgb(1., 0.5, 0.)))]
 struct Attacker;
 
@@ -121,7 +134,8 @@ struct Attacker;
             KeyCode::KeyS,
             KeyCode::KeyA,
             KeyCode::KeyD,
-            KeyCode::Space
+            KeyCode::Space,
+            KeyCode::NumpadComma,
         ), PlayerColor(Color::srgb(0.1, 0.7, 1.)))]
 struct Defender;
 
@@ -131,9 +145,25 @@ struct Shoot {
     shooter: Entity,
 }
 
+
+#[derive(Component)]
+struct BoostDelayTimer {
+    timer: Timer
+}
+impl BoostDelayTimer {
+    fn default() -> Self {
+        Self {timer: Timer::from_seconds(MAX_BOOST_DELAY, TimerMode::Once) }
+    }
+}
+
 #[derive(Component)]
 struct ShootDelayTimer {
     timer: Timer,
+}
+impl ShootDelayTimer {
+    fn default() -> Self {
+        Self {timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once) }
+    }
 }
 
 fn vec_from_angle(angle: f32) -> Vec2 {
@@ -148,8 +178,13 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
     }
 }
 
-fn tick_timers(timers: Query<&mut ShootDelayTimer, With<Player>>, time: Res<Time>) {
+fn tick_timers(timers: Query<&mut ShootDelayTimer, With<Player>>, timers_2: Query<&mut BoostDelayTimer, With<Player>>, time: Res<Time>) {
+    //TODO: this needs to be wrapped in a nice pattern
     for mut timer in timers {
+        timer.timer.tick(time.delta());
+    }
+
+    for mut timer in timers_2 {
         timer.timer.tick(time.delta());
     }
 }
@@ -181,9 +216,6 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         attacker_sprite,
         Position(attacker_pos),
         Facing(attacker_facing.clone()),
-        ShootDelayTimer {
-            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
-        },
         Health(SHIP_HEALTH),
     ));
 
@@ -193,9 +225,6 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         defender_sprite,
         Position(defender_pos),
         Facing(attacker_facing.inverse()),
-        ShootDelayTimer {
-            timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
-        },
         Health(SHIP_HEALTH),
     ));
 }
@@ -236,6 +265,8 @@ fn handle_player_inputs(
             player.thrust_input = 1.;
         } else if keyboard_input.pressed(player.reverse) {
             player.thrust_input = -1.;
+        } else if keyboard_input.pressed(player.boost) {
+            player.boost_input = true;
         } else {
             player.thrust_input = 0.;
         }
@@ -255,9 +286,10 @@ fn handle_player_inputs(
 }
 
 fn update_ship_velocity(
-    variables: Query<(&mut Velocity, &mut Thrust, &mut Facing, &Player), With<Ship>>,
+    variables: Query<(&mut Velocity, &mut Thrust, &mut Facing, &mut Player, &mut BoostDelayTimer), With<Ship>>,
 ) {
-    for (mut velocity, mut thrust, mut facing, player) in variables {
+    // TODO: change boost to event
+    for (mut velocity, mut thrust, mut facing, mut player, mut boost_timer) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
         let mut angle = angle * axis.z;
         angle += SHIP_ROTATION_SPEED * player.rotation_input;
@@ -270,6 +302,12 @@ fn update_ship_velocity(
         velocity.0 += thrust.0;
         if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
+        }
+        if player.boost_input & boost_timer.timer.is_finished() {
+            println!("true");
+            velocity.0 *= 10.;
+            player.boost_input = false;
+            boost_timer.timer.reset();
         }
     }
 }
