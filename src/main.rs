@@ -2,10 +2,10 @@ use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 
-const SHIP_ROTATION_SPEED: f32 = f32::to_radians(5.0);
+const SHIP_ROTATION_SPEED: f32 = f32::to_radians(3.0);
 const SHIP_THRUST: f32 = 0.2;
 const SHIP_HEALTH: f32 = 100.;
-const SHIP_SIZE: f32 =30.;
+const SHIP_SIZE: f32 = 30.;
 const MAX_SHIP_VELOCITY: f32 = 4.;
 
 const MAX_SHOT_DELAY: f32 = 0.5;
@@ -19,6 +19,14 @@ struct Position(Vec2);
 #[derive(Component, Default)]
 #[require(Transform)]
 struct Facing(Quat);
+impl Facing {
+    fn to_angle(&self) -> f32 {
+        // given in radiants
+        let (axis, angle) = self.0.to_axis_angle();
+        let angle = angle * axis.z;
+        angle
+    }
+}
 
 #[derive(Component, Default)]
 struct ShipHealth(f32);
@@ -33,9 +41,8 @@ struct Velocity(Vec2);
 impl Velocity {
     // This is used to initialize shots
     fn from_facing(facing: &Facing) -> Self {
-        let (axis, angle) = facing.0.to_axis_angle();
-        let angle = angle * axis.z;
-        let thrust = Vec2::from_angle(angle).rotate(Vec2::Y).normalize() * MAX_SHOT_VELOCITY;
+        let angle = facing.to_angle();
+        let thrust = vec_from_angle(angle) * MAX_SHOT_VELOCITY;
         Self(thrust)
     }
 }
@@ -121,6 +128,10 @@ struct Shoot {
 #[derive(Component)]
 struct ShootDelayTimer {
     timer: Timer,
+}
+
+fn vec_from_angle(angle: f32) -> Vec2 {
+    Vec2::from_angle(angle).rotate(Vec2::Y).normalize()
 }
 
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
@@ -269,13 +280,15 @@ fn spawn_shots(
     let attacker_img = asset_server.load("shot.png");
     let mut sprite = Sprite::from_image(attacker_img);
     sprite.custom_size = Some(Vec2::new(SHOT_SIZE, SHOT_SIZE));
+
     if let Ok((position, facing, mut config, player_color)) = variables.get_mut(event.shooter) {
         if config.timer.is_finished() {
             sprite.color = player_color.0;
+            let position = position.0 + vec_from_angle(facing.to_angle()) * (SHIP_SIZE/2. + 0.00001);
             commands.spawn((
                 Shot,
-                Transform::from_translation(position.0.extend(0.)),
-                Position(position.0.clone()),
+                Transform::from_translation(position.extend(0.)),
+                Position(position),
                 Velocity::from_facing(facing),
                 sprite,
             ));
