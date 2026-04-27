@@ -11,6 +11,7 @@ const MAX_SHIP_VELOCITY: f32 = 4.;
 const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
 const SHOT_SIZE: f32 = 25.;
+const SHOT_DMG: f32 = 40.;
 
 #[derive(Component, Default)]
 #[require(Transform)]
@@ -29,7 +30,7 @@ impl Facing {
 }
 
 #[derive(Component, Default)]
-struct ShipHealth(f32);
+struct Health(f32);
 
 #[derive(Component, Default)]
 #[require(Facing)]
@@ -48,7 +49,7 @@ impl Velocity {
 }
 
 #[derive(Component, Default)]
-#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO))]
+#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Collider=Collider(Rectangle::new(SHOT_SIZE, SHOT_SIZE)), Health = Health(1.))]
 struct Shot;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -67,8 +68,8 @@ impl Collider {
 }
 
 #[derive(Component, Default)]
-#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), ShipHealth = ShipHealth(SHIP_HEALTH),
-Collider = Collider(Rectangle::new(SHIP_SIZE, SHIP_SIZE)))]
+#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Health = Health(SHIP_HEALTH),
+Collider = Collider(Rectangle::new(SHIP_SIZE-10., SHIP_SIZE-10.)))]
 struct Ship;
 
 #[derive(Component, Default)]
@@ -178,7 +179,7 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         ShootDelayTimer {
             timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
         },
-        ShipHealth(SHIP_HEALTH),
+        Health(SHIP_HEALTH),
     ));
 
     commands.spawn((
@@ -190,7 +191,7 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
         ShootDelayTimer {
             timer: Timer::from_seconds(MAX_SHOT_DELAY, TimerMode::Once),
         },
-        ShipHealth(SHIP_HEALTH),
+        Health(SHIP_HEALTH),
     ));
 }
 
@@ -229,7 +230,7 @@ fn handle_player_inputs(
         if keyboard_input.pressed(player.acc) {
             player.thrust_input = 1.;
         } else if keyboard_input.pressed(player.reverse) {
-            player.thrust_input = 0.;
+            player.thrust_input = -1.;
         } else {
             player.thrust_input = 0.;
         }
@@ -258,6 +259,9 @@ fn update_ship_velocity(
         facing.0 = Quat::from_rotation_z(angle);
 
         thrust.0 = Vec2::from_angle(angle).rotate(Vec2::Y) * SHIP_THRUST * player.thrust_input;
+        if player.thrust_input < 0. {
+            thrust.0 = velocity.0.normalize() * SHIP_THRUST / 2. * -1.;
+        }
         velocity.0 += thrust.0;
         if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
@@ -284,7 +288,8 @@ fn spawn_shots(
     if let Ok((position, facing, mut config, player_color)) = variables.get_mut(event.shooter) {
         if config.timer.is_finished() {
             sprite.color = player_color.0;
-            let position = position.0 + vec_from_angle(facing.to_angle()) * (SHIP_SIZE/2. + 0.00001);
+            let position =
+                position.0 + vec_from_angle(facing.to_angle()) * (SHIP_SIZE / 2. + 1.);
             commands.spawn((
                 Shot,
                 Transform::from_translation(position.extend(0.)),
@@ -297,32 +302,51 @@ fn spawn_shots(
     }
 }
 
-// fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
-//     if !player.intersects(&shot) {
-//         return None;
-//     }
+fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
+    if !player.intersects(&shot) {
+        return None;
+    }
+    Some(Collision::FRONT)
+}
 
-//     let closes_point = player.closest_point(shot.center());
+fn handle_shot_hits(
+    mut commands: Commands,
+    player_variables: Query<(&Position, &Collider, &mut Health), With<Player>>,
+    shot_variables: Query<(&Position, &Collider, Entity), With<Shot>>,
+) {
+    for (player_position, player_collider, mut health) in player_variables {
+        for (shot_position, shot_collider, shot) in shot_variables {
+            if let Some(collision) = collision_with_shot(
+                Aabb2d::new(player_position.0, player_collider.half_size()),
+                Aabb2d::new(shot_position.0, shot_collider.half_size()),
+            ) {
+                match collision {
+                    Collision::FRONT => {
+                        health.0 -= SHOT_DMG;
+                    }
+                    Collision::BACK => {
+                        health.0 -= SHOT_DMG;
+                    }
+                    Collision::SIDE => {
+                        health.0 -= SHOT_DMG;
+                    }
+                }
+                commands.entity(shot).despawn();
+            }
+        }
+    }
+}
 
-// }
-
-// fn handle_shot_hits(
-//     player_variables: Query<(&Position, &Collider, &mut ShipHealth), With<Player>>,
-//     shot_variables: Query<(&Position, &Collider), With<Shot>>,
-// ) {
-//     for (player_positions, player_collider, ship_health) in player_variables {
-//         for (shot_positions, shot_collider) in shot_variables
-//         {
-//             if let Some(collisions) = collision_with_shot(
-//                 Aabb2d::new(player_position.0, player_collider.half_size()),
-//                 Aabb2d::new(shot_positions.0, shot_collider.half_size())
-//             )
-//             match {
-
-//             }
-//         }
-//     }
-// }
+fn clear_dead_stuff(
+    mut commands: Commands,
+    entity_variables: Query<(Entity, &Health), With<Health>>,
+) {
+    for (entity, health) in entity_variables {
+        if health.0 <= 0. {
+            commands.entity(entity).despawn();
+        }
+    }
+}
 
 fn main() {
     App::new()
@@ -337,6 +361,8 @@ fn main() {
                 update_ship_velocity.before(project_positions),
                 update_positions.after(update_ship_velocity),
                 enforce_movement_limits.after(update_positions),
+                handle_shot_hits.after(enforce_movement_limits),
+                clear_dead_stuff.after(handle_shot_hits),
             ),
         )
         .add_observer(spawn_shots)
