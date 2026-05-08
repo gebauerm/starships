@@ -4,16 +4,17 @@
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
+use std::time::Duration;
 
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(3.0);
 const SHIP_THRUST: f32 = 0.2;
 const SHIP_HEALTH: f32 = 100.;
 const SHIP_SIZE: f32 = 30.;
 const MAX_SHIP_VELOCITY: f32 = 4.;
-const BOOST_VELOCITY: f32 = 7.;
+const BOOST_THRUST: f32 = 20.;
 const SHIP_BREAKS: f32 = SHIP_THRUST * 0.3;
-const MAX_BOOST_DELAY: f32 = 15.;
-const BOOST_DURATION: f32 = 0.5;
+const BOOST_DELAY: f32 = 4.;
+const BOOST_DURATION: f32 = 1.;
 
 const MAX_SHOT_DELAY: f32 = 0.5;
 const MAX_SHOT_VELOCITY: f32 = 12.;
@@ -124,7 +125,7 @@ impl Player {
             KeyCode::ArrowLeft,
             KeyCode::ArrowRight,
             KeyCode::Numpad0,
-            KeyCode::ShiftLeft,
+            KeyCode::NumpadComma,
         ), PlayerColor(Color::srgb(1., 0.5, 0.)))]
 struct Attacker;
 
@@ -135,7 +136,7 @@ struct Attacker;
             KeyCode::KeyA,
             KeyCode::KeyD,
             KeyCode::Space,
-            KeyCode::NumpadComma,
+            KeyCode::ShiftLeft,
         ), PlayerColor(Color::srgb(0.1, 0.7, 1.)))]
 struct Defender;
 
@@ -157,12 +158,10 @@ struct BoostDelayTimer {
 }
 impl BoostDelayTimer {
     fn default() -> Self {
-        let mut timer = Timer::from_seconds(MAX_BOOST_DELAY, TimerMode::Once);
+        let mut timer = Timer::from_seconds(BOOST_DELAY, TimerMode::Once);
+        // timer.tick(Duration::from_secs_f32(BOOST_DELAY + 1.));
         timer.finish();
-        Self {
-            timer: timer
-        }
-
+        Self { timer: timer }
     }
 }
 
@@ -205,6 +204,8 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
 fn tick_timers(
     timers: Query<&mut ShootDelayTimer, With<Player>>,
     timers_2: Query<&mut BoostDelayTimer, With<Player>>,
+    boost_duration: Query<&mut BoostDurationTimer, With<Player>>,
+    boost_delay: Query<&mut BoostDelayTimer, With<Player>>,
     time: Res<Time>,
 ) {
     //TODO: this needs to be wrapped in a nice pattern
@@ -213,6 +214,17 @@ fn tick_timers(
     }
 
     for mut timer in timers_2 {
+        timer.timer.tick(time.delta());
+    }
+
+    for mut timer in boost_duration {
+        timer.timer.tick(time.delta());
+        if timer.timer.just_finished() {
+            timer.timer.reset();
+        }
+    }
+
+    for mut timer in boost_delay {
         timer.timer.tick(time.delta());
     }
 }
@@ -238,14 +250,14 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
     let mut defender_sprite = sprite;
     defender_sprite.color = defender_color.0;
 
-    commands.spawn((
-        Attacker,
-        Ship,
-        attacker_sprite,
-        Position(attacker_pos),
-        Facing(attacker_facing.clone()),
-        Health(SHIP_HEALTH),
-    ));
+    // commands.spawn((
+    //     Attacker,
+    //     Ship,
+    //     attacker_sprite,
+    //     Position(attacker_pos),
+    //     Facing(attacker_facing.clone()),
+    //     Health(SHIP_HEALTH),
+    // ));
 
     commands.spawn((
         Defender,
@@ -293,8 +305,8 @@ fn handle_player_inputs(
             player.thrust_input = 1.;
         } else if keyboard_input.pressed(player.reverse) {
             player.thrust_input = -1.;
-        } else if keyboard_input.pressed(player.boost) {
-            commands.trigger(Boost { booster: entity })
+        } else if keyboard_input.just_pressed(player.boost) {
+            commands.trigger(Boost { booster: entity });
         }
 
         if keyboard_input.pressed(player.left) {
@@ -318,12 +330,12 @@ fn update_ship_velocity(
             &mut Thrust,
             &mut Facing,
             &mut Player,
-            &mut BoostDelayTimer,
+            &BoostDurationTimer,
         ),
         With<Ship>,
     >,
 ) {
-    for (mut velocity, mut thrust, mut facing, mut player, mut boost_timer) in variables {
+    for (mut velocity, mut thrust, mut facing, mut player, boost_duration) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
         let mut angle = angle * axis.z;
         angle += SHIP_ROTATION_SPEED * player.rotation_input;
@@ -334,7 +346,9 @@ fn update_ship_velocity(
             thrust.0 = velocity.0.normalize() * SHIP_BREAKS * player.thrust_input;
         }
         velocity.0 += thrust.0;
-        if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
+        if (velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2))
+            & boost_duration.timer.is_finished()
+        {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
         }
     }
@@ -374,28 +388,20 @@ fn spawn_shots(
 }
 
 fn activate_boost(
+    // TODO: think about how to implement cooldowns that activate by the first button press
     event: On<Boost>,
-    mut commands: Commands,
     mut variables: Query<
-        (&mut Velocity, &mut BoostDelayTimer, &mut BoostDurationTimer),
+        (&mut Thrust, &mut BoostDelayTimer, &mut BoostDurationTimer),
         With<Player>,
     >,
     time: Res<Time>,
 ) {
-    if let Ok((mut velocity, mut boost_timer, mut boost_duration)) =
-        variables.get_mut(event.booster)
+    if let Ok((mut thrust, mut boost_timer, mut boost_duration)) = variables.get_mut(event.booster)
     {
-        println!("velocity: {:?}", velocity.0);
-        println!("Timer: {:?}", boost_timer.timer);
-        if boost_timer.timer.just_finished() & !boost_duration.timer.just_finished() {
-            velocity.0 = velocity.0.normalize() * BOOST_VELOCITY;
-
+        if boost_timer.timer.is_finished() & !boost_duration.timer.just_finished() {
+            thrust.0 = thrust.0.normalize() * BOOST_THRUST;
             boost_duration.timer.tick(time.delta());
-        } else if boost_timer.timer.is_finished() & boost_duration.timer.is_finished() {
-            boost_duration.timer.reset();
-            boost_timer.timer.reset();
         }
-        println!("velocity_boost: {:?}", velocity.0);
     }
 }
 
