@@ -4,7 +4,6 @@
 use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
-use std::time::Duration;
 
 const SHIP_ROTATION_SPEED: f32 = f32::to_radians(3.0);
 const SHIP_THRUST: f32 = 0.2;
@@ -146,11 +145,6 @@ struct Shoot {
     shooter: Entity,
 }
 
-#[derive(EntityEvent)]
-struct Boost {
-    #[event_target]
-    booster: Entity,
-}
 
 #[derive(Component)]
 struct BoostDelayTimer {
@@ -250,14 +244,14 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, asset_server: 
     let mut defender_sprite = sprite;
     defender_sprite.color = defender_color.0;
 
-    // commands.spawn((
-    //     Attacker,
-    //     Ship,
-    //     attacker_sprite,
-    //     Position(attacker_pos),
-    //     Facing(attacker_facing.clone()),
-    //     Health(SHIP_HEALTH),
-    // ));
+    commands.spawn((
+        Attacker,
+        Ship,
+        attacker_sprite,
+        Position(attacker_pos),
+        Facing(attacker_facing.clone()),
+        Health(SHIP_HEALTH),
+    ));
 
     commands.spawn((
         Defender,
@@ -306,7 +300,7 @@ fn handle_player_inputs(
         } else if keyboard_input.pressed(player.reverse) {
             player.thrust_input = -1.;
         } else if keyboard_input.just_pressed(player.boost) {
-            commands.trigger(Boost { booster: entity });
+            // here implement boost
         }
 
         if keyboard_input.pressed(player.left) {
@@ -329,13 +323,12 @@ fn update_ship_velocity(
             &mut Velocity,
             &mut Thrust,
             &mut Facing,
-            &mut Player,
-            &BoostDurationTimer,
+            &Player,
         ),
         With<Ship>,
     >,
 ) {
-    for (mut velocity, mut thrust, mut facing, mut player, boost_duration) in variables {
+    for (mut velocity, mut thrust, mut facing,player) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
         let mut angle = angle * axis.z;
         angle += SHIP_ROTATION_SPEED * player.rotation_input;
@@ -346,8 +339,7 @@ fn update_ship_velocity(
             thrust.0 = velocity.0.normalize() * SHIP_BREAKS * player.thrust_input;
         }
         velocity.0 += thrust.0;
-        if (velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2))
-            & boost_duration.timer.is_finished()
+        if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2)
         {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
         }
@@ -387,23 +379,6 @@ fn spawn_shots(
     }
 }
 
-fn activate_boost(
-    // TODO: think about how to implement cooldowns that activate by the first button press
-    event: On<Boost>,
-    mut variables: Query<
-        (&mut Thrust, &mut BoostDelayTimer, &mut BoostDurationTimer),
-        With<Player>,
-    >,
-    time: Res<Time>,
-) {
-    if let Ok((mut thrust, mut boost_timer, mut boost_duration)) = variables.get_mut(event.booster)
-    {
-        if boost_timer.timer.is_finished() & !boost_duration.timer.just_finished() {
-            thrust.0 = thrust.0.normalize() * BOOST_THRUST;
-            boost_duration.timer.tick(time.delta());
-        }
-    }
-}
 
 fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
     if !player.intersects(&shot) {
@@ -469,6 +444,5 @@ fn main() {
             ),
         )
         .add_observer(spawn_shots)
-        .add_observer(activate_boost)
         .run();
 }
