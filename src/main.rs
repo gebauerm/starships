@@ -40,6 +40,17 @@ impl Facing {
 #[derive(Component, Default)]
 struct Health(f32);
 
+#[derive(EntityEvent)]
+struct Scored {
+    entity: Entity,
+}
+
+#[derive(Resource)]
+struct Score {
+    attacker: u8,
+    defender: u8,
+}
+
 #[derive(Component, Default)]
 #[require(Facing)]
 struct Thrust(Vec2);
@@ -144,7 +155,6 @@ struct Shoot {
     #[event_target]
     shooter: Entity,
 }
-
 
 #[derive(Component)]
 struct BoostDelayTimer {
@@ -318,17 +328,9 @@ fn handle_player_inputs(
 }
 
 fn update_ship_velocity(
-    variables: Query<
-        (
-            &mut Velocity,
-            &mut Thrust,
-            &mut Facing,
-            &Player,
-        ),
-        With<Ship>,
-    >,
+    variables: Query<(&mut Velocity, &mut Thrust, &mut Facing, &Player), With<Ship>>,
 ) {
-    for (mut velocity, mut thrust, mut facing,player) in variables {
+    for (mut velocity, mut thrust, mut facing, player) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
         let mut angle = angle * axis.z;
         angle += SHIP_ROTATION_SPEED * player.rotation_input;
@@ -339,8 +341,7 @@ fn update_ship_velocity(
             thrust.0 = velocity.0.normalize() * SHIP_BREAKS * player.thrust_input;
         }
         velocity.0 += thrust.0;
-        if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2)
-        {
+        if velocity.0.length_squared() > MAX_SHIP_VELOCITY.powi(2) {
             velocity.0 = velocity.0.normalize() * MAX_SHIP_VELOCITY;
         }
     }
@@ -379,6 +380,57 @@ fn spawn_shots(
     }
 }
 
+fn detect_player_destruction(
+    attacker: Single<(Entity, &Health), With<Attacker>>,
+    defender: Single<(Entity, &Health), With<Defender>>,
+) {
+    let (attacker, attacker_health) = attacker.into_inner();
+    let (defender, defender_health) = defender.into_inner();
+
+    if defender_health.0 <= 0. {
+        Scored { entity: attacker };
+    }
+
+    if attacker_health.0 <= 0. {
+        Scored { entity: defender };
+    }
+}
+
+fn update_score(
+    event: On<Scored>,
+    mut score: ResMut<Score>,
+    attacker: Query<Entity, With<Attacker>>,
+    defender: Query<Entity, With<Defender>>,
+) {
+    if attacker.get(event.entity).is_ok() {
+        score.attacker += 1;
+    }
+    if defender.get(event.entity).is_ok() {
+        score.defender += 1;
+    }
+}
+
+fn reset_game(
+    _event: On<Scored>,
+    window: Single<&Window>,
+    attacker_variables: Single<(&mut Facing, &mut Position, &mut Health), With<Attacker>>,
+    defender_variables: Single<(&mut Facing, &mut Position, &mut Health), With<Defender>>,
+) {
+    // TODO: this is copied code. This needs to be abstracted in a propper way.
+    let half_window_size = window.resolution.size() / 2.;
+    let padding = 20.;
+
+    let attacker_pos = Vec2::new(half_window_size.x - padding, 0.);
+    let defender_pos = Vec2::new(-half_window_size.x + padding, 0.);
+    let attacker_facing =
+        Quat::from_rotation_z((defender_pos - attacker_pos).to_angle() - FRAC_PI_2);
+    let defender_facing = attacker_facing.inverse();
+
+    let (attacker_facing, attacker_position, attacker_health) = attacker_variables.into_inner();
+    let (defender_facing, defender_position, defender_health) = defender_variables.into_inner();
+
+    // TODO: please make the assignments more efficient.
+}
 
 fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
     if !player.intersects(&shot) {
@@ -429,6 +481,10 @@ fn clear_dead_stuff(
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .insert_resource(Score {
+            attacker: 0,
+            defender: 0,
+        })
         .add_systems(Startup, (spawn_camera, spawn_players))
         .add_systems(
             FixedUpdate,
@@ -440,9 +496,12 @@ fn main() {
                 update_positions.after(update_ship_velocity),
                 enforce_movement_limits.after(update_positions),
                 handle_shot_hits.after(enforce_movement_limits),
+                detect_player_destruction.before(clear_dead_stuff),
                 clear_dead_stuff.after(handle_shot_hits),
             ),
         )
         .add_observer(spawn_shots)
+        .add_observer(update_score)
+        .add_observer(reset_game)
         .run();
 }
