@@ -207,7 +207,6 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
 
 fn tick_timers(
     timers: Query<&mut ShootDelayTimer, With<Player>>,
-    timers_2: Query<&mut BoostDelayTimer, With<Player>>,
     boost_duration: Query<&mut BoostDurationTimer, With<Player>>,
     boost_delay: Query<&mut BoostDelayTimer, With<Player>>,
     time: Res<Time>,
@@ -217,9 +216,6 @@ fn tick_timers(
         timer.timer.tick(time.delta());
     }
 
-    for mut timer in timers_2 {
-        timer.timer.tick(time.delta());
-    }
 
     for mut timer in boost_duration {
         timer.timer.tick(time.delta());
@@ -469,7 +465,7 @@ fn handle_shot_hits(
 
 fn clear_dead_stuff(
     mut commands: Commands,
-    entity_variables: Query<(Entity, &Health), With<Health>>,
+    entity_variables: Query<(Entity, &Health)>,
 ) {
     for (entity, health) in entity_variables {
         if health.0 <= 0. {
@@ -496,12 +492,12 @@ fn main() {
                 update_positions.after(update_ship_velocity),
                 enforce_movement_limits.after(update_positions),
                 handle_shot_hits.after(enforce_movement_limits),
-                detect_player_destruction.before(clear_dead_stuff),
+                //detect_player_destruction.before(clear_dead_stuff),
                 clear_dead_stuff.after(handle_shot_hits),
             ),
         )
         .add_observer(spawn_shots)
         .add_observer(update_score)
-        .add_observer(reset_game)
+        //.add_observer(reset_game)
         .run();
 }

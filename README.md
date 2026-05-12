@@ -72,6 +72,13 @@ For better performance you can run with release optimizations:
 cargo run --release
 ```
 
+Debug with
+
+```bash
+cargo run --features bevy/debug
+
+```
+
 ---
 
 ## 🛠 Built With
