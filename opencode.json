@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+    "agent": {
+        "review": {
+            "description": "Reviews code for best practices and potential issues. Primary reasong for this agent is to teach rust to the developer."
+        }
+    }
+}
