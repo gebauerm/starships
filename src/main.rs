@@ -84,14 +84,14 @@ struct PlayerColor(Color);
 #[derive(Resource)]
 struct Shipsprite(Sprite);
 
-fn load_ship_sprite(asset_server: Res<AssetServer>) -> Shipsprite {
+fn load_ship_sprite(asset_server: &AssetServer) -> Shipsprite {
     let ship_img = asset_server.load("player.png");
     let mut sprite = Sprite::from_image(ship_img.clone());
     sprite.custom_size = Some(Vec2::new(config::SHIP_SIZE, config::SHIP_SIZE));
     Shipsprite(sprite)
 }
 fn load_sprites(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(load_ship_sprite(asset_server));
+    commands.insert_resource(load_ship_sprite(&asset_server));
 }
 
 #[derive(Component)]
@@ -165,6 +165,7 @@ struct PlayerBundle {
     health: Health,
     shoot_delay_timer: ShootDelayTimer,
     ship: Ship,
+    color: PlayerColor,
 }
 
 impl PlayerBundle {
@@ -177,13 +178,14 @@ impl PlayerBundle {
         let sprite = player_config.color_sprites(sprite);
         let controls = PlayerControls::from_config(&player_config);
         Self {
-            controls,
-            sprite,
+            controls: controls,
+            sprite: sprite,
             position: Position(position),
             facing: Facing(facing),
             health: Health(config::SHIP_HEALTH),
             shoot_delay_timer: ShootDelayTimer::default(),
             ship: Ship,
+            color: PlayerColor(player_config.color)
         }
     }
 }
@@ -267,29 +269,38 @@ fn tick_timers(
 }
 
 fn spawn_player<C: Component>(
-        player_config: &player_config::PlayerConfig,
-        window: &Single<&Window>,
-        sprite: Sprite,
-        role_marker: C,
-    ) -> (PlayerBundle, impl Component) {
-        let player_bundle = PlayerBundle::new(player_config, sprite, window);
+    player_config: &player_config::PlayerConfig,
+    window: &Single<&Window>,
+    sprite: Sprite,
+    role_marker: C,
+) -> (PlayerBundle, impl Component) {
+    let player_bundle = PlayerBundle::new(player_config, sprite, window);
 
-        (player_bundle, role_marker)
+    (player_bundle, role_marker)
 }
 
 fn spawn_players(mut commands: Commands, window: Single<&Window>, ship_sprite: Res<Shipsprite>) {
     for player_config in player_config::PLAYER_CONFIGS.iter() {
         match player_config.role {
             player_config::PlayerRole::Attacker => {
-                let (player_bundle, role) = spawn_player(player_config, &window, ship_sprite.0.clone(), player_config::Attacker);
+                let (player_bundle, role) = spawn_player(
+                    player_config,
+                    &window,
+                    ship_sprite.0.clone(),
+                    player_config::Attacker,
+                );
                 commands.spawn((player_bundle, role));
             }
             player_config::PlayerRole::Defender => {
-                let (player_bundle, role) = spawn_player(player_config, &window, ship_sprite.0.clone(), player_config::Defender);
+                let (player_bundle, role) = spawn_player(
+                    player_config,
+                    &window,
+                    ship_sprite.0.clone(),
+                    player_config::Defender,
+                );
                 commands.spawn((player_bundle, role));
             }
         }
-        
     }
 }
 
@@ -387,10 +398,10 @@ fn spawn_shots(
     let mut sprite = Sprite::from_image(attacker_img);
     sprite.custom_size = Some(Vec2::new(config::SHOT_SIZE, config::SHOT_SIZE));
 
-    if let Ok((position, facing, mut player_config, player_color)) =
+    if let Ok((position, facing, mut shoot_delay, player_color)) =
         variables.get_mut(event.shooter)
     {
-        if player_config.timer.is_finished() {
+        if shoot_delay.timer.is_finished() {
             sprite.color = player_color.0;
             let position = position.0
                 + vec_from_angle(facing.to_angle())
@@ -402,7 +413,7 @@ fn spawn_shots(
                 Velocity::from_facing(facing),
                 sprite,
             ));
-            player_config.timer.reset();
+            shoot_delay.timer.reset();
         }
     }
 }
@@ -496,7 +507,7 @@ fn main() {
             attacker: 0,
             defender: 0,
         })
-        .add_systems(Startup, (spawn_camera, load_sprites, spawn_players))
+        .add_systems(Startup, (spawn_camera, load_sprites.before(spawn_players), spawn_players))
         .add_systems(
             FixedUpdate,
             (
