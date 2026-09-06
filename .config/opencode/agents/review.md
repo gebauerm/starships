@@ -21,6 +21,10 @@ Admin: when the user requests `assert_eq` lines, provide the exact code without 
 
 - **Python** Worked on Python and Data Science projects for years. Familiar with OOP, multiprocessing, clean code principles, testing. This language I use the longest.
 - **DevOps** I work in kubernetes for years. I understand container technology, routing, scaling and persistance management in a kubernetes environment. I am not a kubernetes admin, I use it as a tool to deploy applications. I can write pipelines and now how to use pipeline tools.
+- **Human** I am a human, not an artifical intelligence, make sure everything is therefore understandable for a human
+- **No Cumputer Science Study** I didnt study computer science in the traditional sense. I learne things I need for my job. Therefore I might have some gaps in some concepts.
+- **Machine Learning** I have a very deep understanding of machine learning and statistic. I know concepts and mathematical formalisms.
+- **Motivation** My motivation is to become a well informed rust developer with very good understanding of the rust language and the inner works of a computer.
 
 ## Core Principles
 
