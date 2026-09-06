@@ -4,30 +4,22 @@
 // TODO: add boost system for movement
 // TODO: add floating objects for level building
 // TODO: add winnig points
-use bevy::math::bounding::{Aabb2d, IntersectsVolume};
-use bevy::prelude::*;
+
 
 mod config;
 mod timers;
+mod movement;
 pub mod player_config;
 
-// Component Movement
-#[derive(Component, Default)]
-#[require(Transform)]
-struct Position(Vec2);
 
-// Component Movement
-#[derive(Component, Default)]
-#[require(Transform)]
-struct Facing(Quat);
-impl Facing {
-    fn to_angle(&self) -> f32 {
-        // given in radiants
-        let (axis, angle) = self.0.to_axis_angle();
-        let angle = angle * axis.z;
-        angle
-    }
-}
+use bevy::math::bounding::{Aabb2d, IntersectsVolume};
+use bevy::prelude::*;
+use movement::*;
+
+
+
+
+
 
 // Component Combat
 #[derive(Component, Default)]
@@ -49,29 +41,11 @@ struct Score {
 }
 
 
-// Component Movement
-#[derive(Component, Default)]
-#[require(Facing)]
-struct Thrust(Vec2);
-
-
-// Component Movement
-#[derive(Component, Default, Debug)]
-struct Velocity(Vec2);
-
-impl Velocity {
-    // This is used to initialize shots
-    fn from_facing(facing: &Facing) -> Self {
-        let angle = facing.to_angle();
-        let thrust = vec_from_angle(angle) * config::MAX_SHOT_VELOCITY;
-        Self(thrust)
-    }
-}
 
 
 // Component Projectiles
 #[derive(Component, Default)]
-#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Collider=Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), Health = Health(1.))]
+#[require(Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), Collider=Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), Health = Health(1.))]
 struct Shot;
 
 
@@ -94,7 +68,7 @@ impl Collider {
 
 // Component Ship
 #[derive(Component, Default)]
-#[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Health = Health(config::SHIP_HEALTH),
+#[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), Health = Health(config::SHIP_HEALTH),
 Collider = Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), timers::ShootDelayTimer= timers::ShootDelayTimer::default(), timers::BoostDelayTimer = timers::BoostDelayTimer::default(), timers::BoostDurationTimer=timers::BoostDurationTimer::default())]
 struct Ship;
 
@@ -192,8 +166,8 @@ struct PlayerBundle {
     // TODO: move this into player_config, together with controls. Players should be spawne directly from player_config.
     controls: PlayerControls,
     sprite: Sprite,
-    position: Position,
-    facing: Facing,
+    position: movement::Position,
+    facing: movement::Facing,
     health: Health,
     shoot_delay_timer: timers::ShootDelayTimer,
     ship: Ship,
@@ -212,8 +186,8 @@ impl PlayerBundle {
         Self {
             controls: controls,
             sprite: sprite,
-            position: Position(position),
-            facing: Facing(facing),
+            position: movement::Position(position),
+            facing: movement::Facing(facing),
             health: Health(config::SHIP_HEALTH),
             shoot_delay_timer: timers::ShootDelayTimer::default(),
             ship: Ship,
@@ -232,28 +206,6 @@ struct Shoot {
 
 
 
-
-
-
-
-
-
-
-
-// Movement
-fn vec_from_angle(angle: f32) -> Vec2 {
-    Vec2::from_angle(angle).rotate(Vec2::Y).normalize()
-}
-
-
-// Movement
-fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
-    for (mut transform, position, facing) in &mut positionables {
-        // Extend is going to turn this from a Vec2 to a Vec3
-        transform.translation = position.0.extend(0.);
-        transform.rotation = facing.0;
-    }
-}
 
 
 
@@ -303,29 +255,6 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
 
-
-// Movement
-fn enforce_movement_limits(
-    window: Single<&Window>,
-    ship_positions: Query<&mut Position, With<Ship>>,
-) {
-    let max_window_height = window.resolution.height() / 2.;
-    let max_window_width = window.resolution.width() / 2.;
-
-    for mut ship_position in ship_positions {
-        if ship_position.0.x > max_window_width {
-            ship_position.0.x -= window.resolution.width();
-        } else if ship_position.0.x < -max_window_width {
-            ship_position.0.x += window.resolution.width();
-        }
-
-        if ship_position.0.y > max_window_height {
-            ship_position.0.y -= window.resolution.height();
-        } else if ship_position.0.y < -max_window_height {
-            ship_position.0.y += window.resolution.height();
-        }
-    }
-}
 
 
 // ship systems
@@ -381,20 +310,12 @@ fn update_ship_velocity(
 }
 
 
-// Mmovement systems
-fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
-    for (mut position, velocity) in movement_variables {
-        position.0 += velocity.0;
-    }
-}
-
-
 // shooting systems
 fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
     mut variables: Query<
-        (&Position, &Facing, &mut timers::ShootDelayTimer, &PlayerColor),
+        (&movement::Position, &movement::Facing, &mut timers::ShootDelayTimer, &PlayerColor),
         With<PlayerControls>,
     >,
     asset_server: Res<AssetServer>,
@@ -409,7 +330,7 @@ fn spawn_shots(
         if shoot_delay.timer.is_finished() {
             sprite.color = player_color.0;
             let position = position.0
-                + vec_from_angle(facing.to_angle())
+                + movement::direction_from_angle(facing.to_angle())
                     * (config::SHIP_SIZE / 2. + config::SHOOT_OFFSET);
             commands.spawn((
                 Shot,
