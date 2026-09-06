@@ -4,26 +4,19 @@
 // TODO: add boost system for movement
 // TODO: add floating objects for level building
 // TODO: add winnig points
+use bevy::prelude::*;
+use movement::*;
+use combat::{Health, clear_dead_stuff, handle_shot_hits};
 
 
 mod config;
 mod timers;
 mod movement;
+mod combat;
 pub mod player_config;
 
 
-use bevy::math::bounding::{Aabb2d, IntersectsVolume};
-use bevy::prelude::*;
-use movement::*;
 
-
-
-
-
-
-// Component Combat
-#[derive(Component, Default)]
-struct Health(f32);
 
 
 // Event Scoring
@@ -45,31 +38,13 @@ struct Score {
 
 // Component Projectiles
 #[derive(Component, Default)]
-#[require(Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), Collider=Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), Health = Health(1.))]
+#[require(Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Collider=combat::Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), combat::Health = combat::Health(1.))]
 struct Shot;
-
-
-// Component Combat
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum Collision {
-    FRONT,
-    BACK,
-    SIDE
-}
-
-// Component Combat
-#[derive(Component, Default)]
-struct Collider(Rectangle);
-impl Collider {
-    fn half_size(&self) -> Vec2 {
-        self.0.half_size
-    }
-}
 
 // Component Ship
 #[derive(Component, Default)]
-#[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), Health = Health(config::SHIP_HEALTH),
-Collider = Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), timers::ShootDelayTimer= timers::ShootDelayTimer::default(), timers::BoostDelayTimer = timers::BoostDelayTimer::default(), timers::BoostDurationTimer=timers::BoostDurationTimer::default())]
+#[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Health = combat::Health(config::SHIP_HEALTH),
+combat::Collider = combat::Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), timers::ShootDelayTimer= timers::ShootDelayTimer::default(), timers::BoostDelayTimer = timers::BoostDelayTimer::default(), timers::BoostDurationTimer=timers::BoostDurationTimer::default())]
 struct Ship;
 
 
@@ -353,11 +328,11 @@ fn detect_player_destruction(
     let (attacker, attacker_health) = attacker.into_inner();
     let (defender, defender_health) = defender.into_inner();
 
-    if defender_health.0 <= 0. {
+    if defender_health.is_dead() {
         Scored { entity: attacker };
     }
 
-    if attacker_health.0 <= 0. {
+    if attacker_health.is_dead() {
         Scored { entity: defender };
     }
 }
@@ -389,53 +364,6 @@ fn reset_game(
     spawn_players(commands, window, ship_sprite);
 }
 
-
-// combat systems
-fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
-    if !player.intersects(&shot) {
-        return None;
-    }
-    Some(Collision::FRONT)
-}
-
-// combat systems
-fn handle_shot_hits(
-    mut commands: Commands,
-    player_variables: Query<(&Position, &Collider, &mut Health), With<PlayerControls>>,
-    shot_variables: Query<(&Position, &Collider, Entity), With<Shot>>,
-) {
-    for (player_position, player_collider, mut health) in player_variables {
-        for (shot_position, shot_collider, shot) in shot_variables {
-            if let Some(collision) = collision_with_shot(
-                Aabb2d::new(player_position.0, player_collider.half_size()),
-                Aabb2d::new(shot_position.0, shot_collider.half_size()),
-            ) {
-                match collision {
-                    Collision::FRONT => {
-                        health.0 -= config::SHOT_DMG;
-                    }
-                    Collision::BACK => {
-                        health.0 -= config::SHOT_DMG;
-                    }
-                    Collision::SIDE => {
-                        health.0 -= config::SHOT_DMG;
-                    }
-                }
-                commands.entity(shot).despawn();
-            }
-        }
-    }
-}
-
-
-// combat systems
-fn clear_dead_stuff(mut commands: Commands, entity_variables: Query<(Entity, &Health)>) {
-    for (entity, health) in entity_variables {
-        if health.0 <= 0. {
-            commands.entity(entity).despawn();
-        }
-    }
-}
 
 
 // App Setup
