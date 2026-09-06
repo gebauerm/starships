@@ -8,6 +8,7 @@ use bevy::math::bounding::{Aabb2d, IntersectsVolume};
 use bevy::prelude::*;
 
 mod config;
+mod timers;
 pub mod player_config;
 
 // Component Movement
@@ -94,7 +95,7 @@ impl Collider {
 // Component Ship
 #[derive(Component, Default)]
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Health = Health(config::SHIP_HEALTH),
-Collider = Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), ShootDelayTimer= ShootDelayTimer::default(), BoostDelayTimer = BoostDelayTimer::default(), BoostDurationTimer=BoostDurationTimer::default())]
+Collider = Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), timers::ShootDelayTimer= timers::ShootDelayTimer::default(), timers::BoostDelayTimer = timers::BoostDelayTimer::default(), timers::BoostDurationTimer=timers::BoostDurationTimer::default())]
 struct Ship;
 
 
@@ -194,7 +195,7 @@ struct PlayerBundle {
     position: Position,
     facing: Facing,
     health: Health,
-    shoot_delay_timer: ShootDelayTimer,
+    shoot_delay_timer: timers::ShootDelayTimer,
     ship: Ship,
     color: PlayerColor,
 }
@@ -214,7 +215,7 @@ impl PlayerBundle {
             position: Position(position),
             facing: Facing(facing),
             health: Health(config::SHIP_HEALTH),
-            shoot_delay_timer: ShootDelayTimer::default(),
+            shoot_delay_timer: timers::ShootDelayTimer::default(),
             ship: Ship,
             color: PlayerColor(player_config.color)
         }
@@ -230,47 +231,13 @@ struct Shoot {
 }
 
 
-// Component timers
-#[derive(Component)]
-struct BoostDelayTimer {
-    timer: Timer,
-}
-impl BoostDelayTimer {
-    fn default() -> Self {
-        let mut timer = Timer::from_seconds(config::BOOST_DELAY, TimerMode::Once);
-        // timer.tick(Duration::from_secs_f32(BOOST_DELAY + 1.));
-        timer.finish();
-        Self { timer: timer }
-    }
-}
 
 
-// Component timers
-#[derive(Component)]
-struct BoostDurationTimer {
-    timer: Timer,
-}
-impl BoostDurationTimer {
-    fn default() -> Self {
-        Self {
-            timer: Timer::from_seconds(config::BOOST_DURATION, TimerMode::Once),
-        }
-    }
-}
 
 
-// Component timers
-#[derive(Component)]
-struct ShootDelayTimer {
-    timer: Timer,
-}
-impl ShootDelayTimer {
-    fn default() -> Self {
-        Self {
-            timer: Timer::from_seconds(config::MAX_SHOT_DELAY, TimerMode::Once),
-        }
-    }
-}
+
+
+
 
 
 // Movement
@@ -289,29 +256,6 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
 }
 
 
-// timers
-fn tick_timers(
-    timers: Query<&mut ShootDelayTimer, With<PlayerControls>>,
-    boost_duration: Query<&mut BoostDurationTimer, With<PlayerControls>>,
-    boost_delay: Query<&mut BoostDelayTimer, With<PlayerControls>>,
-    time: Res<Time>,
-) {
-    //TODO: this needs to be wrapped in a nice pattern
-    for mut timer in timers {
-        timer.timer.tick(time.delta());
-    }
-
-    for mut timer in boost_duration {
-        timer.timer.tick(time.delta());
-        if timer.timer.just_finished() {
-            timer.timer.reset();
-        }
-    }
-
-    for mut timer in boost_delay {
-        timer.timer.tick(time.delta());
-    }
-}
 
 
 // ship spawning
@@ -450,7 +394,7 @@ fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
     mut variables: Query<
-        (&Position, &Facing, &mut ShootDelayTimer, &PlayerColor),
+        (&Position, &Facing, &mut timers::ShootDelayTimer, &PlayerColor),
         With<PlayerControls>,
     >,
     asset_server: Res<AssetServer>,
@@ -586,7 +530,7 @@ fn main() {
             FixedUpdate,
             (
                 project_positions,
-                tick_timers.before(handle_player_inputs),
+                timers::tick_timers.before(handle_player_inputs),
                 handle_player_inputs.before(update_ship_velocity),
                 update_ship_velocity.before(project_positions),
                 update_positions.after(update_ship_velocity),
