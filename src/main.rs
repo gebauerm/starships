@@ -1,17 +1,21 @@
+// Domains: combat + projectiles + shooting systems, movement system, scoring system, ship systems
+
+
 // TODO: add boost system for movement
 // TODO: add floating objects for level building
 // TODO: add winnig points
-use bevy::math::bounding::{Aabb2d, BoundingVolume, IntersectsVolume};
-use bevy::{prelude::*, sprite};
-use std::f32::consts::FRAC_PI_2;
+use bevy::math::bounding::{Aabb2d, IntersectsVolume};
+use bevy::prelude::*;
 
 mod config;
 pub mod player_config;
 
+// Component Movement
 #[derive(Component, Default)]
 #[require(Transform)]
 struct Position(Vec2);
 
+// Component Movement
 #[derive(Component, Default)]
 #[require(Transform)]
 struct Facing(Quat);
@@ -24,24 +28,33 @@ impl Facing {
     }
 }
 
+// Component Combat
 #[derive(Component, Default)]
 struct Health(f32);
 
+
+// Event Scoring
 #[derive(EntityEvent)]
 struct Scored {
     entity: Entity,
 }
 
+
+// Reesource Scoring
 #[derive(Resource)]
 struct Score {
     attacker: u8,
     defender: u8,
 }
 
+
+// Component Movement
 #[derive(Component, Default)]
 #[require(Facing)]
 struct Thrust(Vec2);
 
+
+// Component Movement
 #[derive(Component, Default, Debug)]
 struct Velocity(Vec2);
 
@@ -54,17 +67,22 @@ impl Velocity {
     }
 }
 
+
+// Component Projectiles
 #[derive(Component, Default)]
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Collider=Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), Health = Health(1.))]
 struct Shot;
 
+
+// Component Combat
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Collision {
     FRONT,
     BACK,
-    SIDE,
+    SIDE
 }
 
+// Component Combat
 #[derive(Component, Default)]
 struct Collider(Rectangle);
 impl Collider {
@@ -73,27 +91,38 @@ impl Collider {
     }
 }
 
+// Component Ship
 #[derive(Component, Default)]
 #[require(Position, Thrust = Thrust(Vec2::ZERO), Velocity = Velocity(Vec2::ZERO), Health = Health(config::SHIP_HEALTH),
 Collider = Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), ShootDelayTimer= ShootDelayTimer::default(), BoostDelayTimer = BoostDelayTimer::default(), BoostDurationTimer=BoostDurationTimer::default())]
 struct Ship;
 
+
+// Component ship look
 #[derive(Component, Default)]
 struct PlayerColor(Color);
 
+
+// Ressource ship look
 #[derive(Resource)]
 struct Shipsprite(Sprite);
 
+
+// App Setup
 fn load_ship_sprite(asset_server: &AssetServer) -> Shipsprite {
     let ship_img = asset_server.load("player.png");
     let mut sprite = Sprite::from_image(ship_img.clone());
     sprite.custom_size = Some(Vec2::new(config::SHIP_SIZE, config::SHIP_SIZE));
     Shipsprite(sprite)
 }
+
+// App Setup
 fn load_sprites(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(load_ship_sprite(&asset_server));
 }
 
+
+// Ship Input
 #[derive(Component)]
 #[require(Ship)]
 struct PlayerControls {
@@ -155,6 +184,8 @@ impl Default for PlayerControls {
     }
 }
 
+
+// Ship spawning
 #[derive(Bundle)]
 struct PlayerBundle {
     // TODO: move this into player_config, together with controls. Players should be spawne directly from player_config.
@@ -190,12 +221,16 @@ impl PlayerBundle {
     }
 }
 
+
+// Event Shooting
 #[derive(EntityEvent)]
 struct Shoot {
     #[event_target]
     shooter: Entity,
 }
 
+
+// Component timers
 #[derive(Component)]
 struct BoostDelayTimer {
     timer: Timer,
@@ -209,6 +244,8 @@ impl BoostDelayTimer {
     }
 }
 
+
+// Component timers
 #[derive(Component)]
 struct BoostDurationTimer {
     timer: Timer,
@@ -221,6 +258,8 @@ impl BoostDurationTimer {
     }
 }
 
+
+// Component timers
 #[derive(Component)]
 struct ShootDelayTimer {
     timer: Timer,
@@ -233,10 +272,14 @@ impl ShootDelayTimer {
     }
 }
 
+
+// Movement
 fn vec_from_angle(angle: f32) -> Vec2 {
     Vec2::from_angle(angle).rotate(Vec2::Y).normalize()
 }
 
+
+// Movement
 fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
     for (mut transform, position, facing) in &mut positionables {
         // Extend is going to turn this from a Vec2 to a Vec3
@@ -245,6 +288,8 @@ fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facin
     }
 }
 
+
+// timers
 fn tick_timers(
     timers: Query<&mut ShootDelayTimer, With<PlayerControls>>,
     boost_duration: Query<&mut BoostDurationTimer, With<PlayerControls>>,
@@ -268,6 +313,8 @@ fn tick_timers(
     }
 }
 
+
+// ship spawning
 fn spawn_player<C: Component>(
     player_config: &player_config::PlayerConfig,
     window: &Single<&Window>,
@@ -279,6 +326,8 @@ fn spawn_player<C: Component>(
     (player_bundle, role_marker)
 }
 
+
+// ship spawning
 fn spawn_players(mut commands: Commands, window: Single<&Window>, ship_sprite: Res<Shipsprite>) {
     for player_config in player_config::PLAYER_CONFIGS.iter() {
         match player_config.role {
@@ -304,10 +353,14 @@ fn spawn_players(mut commands: Commands, window: Single<&Window>, ship_sprite: R
     }
 }
 
+
+// App Setup
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
 
+
+// Movement
 fn enforce_movement_limits(
     window: Single<&Window>,
     ship_positions: Query<&mut Position, With<Ship>>,
@@ -330,6 +383,8 @@ fn enforce_movement_limits(
     }
 }
 
+
+// ship systems
 fn handle_player_inputs(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -358,6 +413,8 @@ fn handle_player_inputs(
     }
 }
 
+
+// ship systems
 fn update_ship_velocity(
     variables: Query<(&mut Velocity, &mut Thrust, &mut Facing, &PlayerControls), With<Ship>>,
 ) {
@@ -379,12 +436,16 @@ fn update_ship_velocity(
     }
 }
 
+
+// Mmovement systems
 fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
     for (mut position, velocity) in movement_variables {
         position.0 += velocity.0;
     }
 }
 
+
+// shooting systems
 fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
@@ -418,6 +479,8 @@ fn spawn_shots(
     }
 }
 
+
+// scoring systems
 fn detect_player_destruction(
     attacker: Single<(Entity, &Health), With<player_config::Attacker>>,
     defender: Single<(Entity, &Health), With<player_config::Defender>>,
@@ -434,6 +497,8 @@ fn detect_player_destruction(
     }
 }
 
+
+// scoring system
 fn update_score(
     event: On<Scored>,
     mut score: ResMut<Score>,
@@ -448,6 +513,8 @@ fn update_score(
     }
 }
 
+
+// scoring system
 fn reset_game(
     _event: On<Scored>,
     window: Single<&Window>,
@@ -457,6 +524,8 @@ fn reset_game(
     spawn_players(commands, window, ship_sprite);
 }
 
+
+// combat systems
 fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
     if !player.intersects(&shot) {
         return None;
@@ -464,6 +533,7 @@ fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
     Some(Collision::FRONT)
 }
 
+// combat systems
 fn handle_shot_hits(
     mut commands: Commands,
     player_variables: Query<(&Position, &Collider, &mut Health), With<PlayerControls>>,
@@ -492,6 +562,8 @@ fn handle_shot_hits(
     }
 }
 
+
+// combat systems
 fn clear_dead_stuff(mut commands: Commands, entity_variables: Query<(Entity, &Health)>) {
     for (entity, health) in entity_variables {
         if health.0 <= 0. {
@@ -500,6 +572,8 @@ fn clear_dead_stuff(mut commands: Commands, entity_variables: Query<(Entity, &He
     }
 }
 
+
+// App Setup
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
