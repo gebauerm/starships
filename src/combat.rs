@@ -1,15 +1,16 @@
 //! Combat: hit points, collliers and collision detection
 
 use bevy::prelude::*;
-use crate::{PlayerControls, Shot, config};
+use crate::{PlayerControls, config};
 use bevy::math::bounding::{Aabb2d, IntersectsVolume};
 use crate::movement;
+use crate::projectiles::Shot;
 
 #[derive(Component, Default)]
 pub struct Health(pub f32);
 
 impl Health {
-    pub fn is_dead(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         self.0 <= 0.
     }
 }
@@ -69,7 +70,7 @@ pub fn handle_shot_hits(
 
 pub fn clear_dead_stuff(mut commands: Commands, entity_variables: Query<(Entity, &Health)>) {
     for (entity, health) in entity_variables {
-        if health.0 <= 0. {
+        if health.is_zero() {
             commands.entity(entity).despawn();
         }
     }

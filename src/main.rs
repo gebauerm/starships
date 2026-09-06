@@ -13,10 +13,8 @@ mod config;
 mod timers;
 mod movement;
 mod combat;
+mod projectiles;
 pub mod player_config;
-
-
-
 
 
 // Event Scoring
@@ -32,14 +30,6 @@ struct Score {
     attacker: u8,
     defender: u8,
 }
-
-
-
-
-// Component Projectiles
-#[derive(Component, Default)]
-#[require(Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Collider=combat::Collider(Rectangle::new(config::SHOT_SIZE, config::SHOT_SIZE)), combat::Health = combat::Health(1.))]
-struct Shot;
 
 // Component Ship
 #[derive(Component, Default)]
@@ -172,17 +162,6 @@ impl PlayerBundle {
 }
 
 
-// Event Shooting
-#[derive(EntityEvent)]
-struct Shoot {
-    #[event_target]
-    shooter: Entity,
-}
-
-
-
-
-
 
 
 // ship spawning
@@ -256,7 +235,7 @@ fn handle_player_inputs(
         }
 
         if keyboard_input.pressed(player.fire) {
-            commands.trigger(Shoot { shooter: entity });
+            commands.trigger(projectiles::Shoot { shooter: entity });
         }
     }
 }
@@ -284,42 +263,6 @@ fn update_ship_velocity(
     }
 }
 
-
-// shooting systems
-fn spawn_shots(
-    event: On<Shoot>,
-    mut commands: Commands,
-    mut variables: Query<
-        (&movement::Position, &movement::Facing, &mut timers::ShootDelayTimer, &PlayerColor),
-        With<PlayerControls>,
-    >,
-    asset_server: Res<AssetServer>,
-) {
-    let attacker_img = asset_server.load("shot.png");
-    let mut sprite = Sprite::from_image(attacker_img);
-    sprite.custom_size = Some(Vec2::new(config::SHOT_SIZE, config::SHOT_SIZE));
-
-    if let Ok((position, facing, mut shoot_delay, player_color)) =
-        variables.get_mut(event.shooter)
-    {
-        if shoot_delay.timer.is_finished() {
-            sprite.color = player_color.0;
-            let position = position.0
-                + movement::direction_from_angle(facing.to_angle())
-                    * (config::SHIP_SIZE / 2. + config::SHOOT_OFFSET);
-            commands.spawn((
-                Shot,
-                Transform::from_translation(position.extend(0.)),
-                Position(position),
-                Velocity::from_facing(facing),
-                sprite,
-            ));
-            shoot_delay.timer.reset();
-        }
-    }
-}
-
-
 // scoring systems
 fn detect_player_destruction(
     attacker: Single<(Entity, &Health), With<player_config::Attacker>>,
@@ -328,11 +271,11 @@ fn detect_player_destruction(
     let (attacker, attacker_health) = attacker.into_inner();
     let (defender, defender_health) = defender.into_inner();
 
-    if defender_health.is_dead() {
+    if defender_health.is_zero() {
         Scored { entity: attacker };
     }
 
-    if attacker_health.is_dead() {
+    if attacker_health.is_zero() {
         Scored { entity: defender };
     }
 }
@@ -389,7 +332,7 @@ fn main() {
                 clear_dead_stuff.after(handle_shot_hits),
             ),
         )
-        .add_observer(spawn_shots)
+        .add_observer(projectiles::spawn_shots)
         .add_observer(update_score)
         //.add_observer(reset_game)
         .run();
