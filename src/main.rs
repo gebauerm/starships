@@ -1,9 +1,14 @@
-// Domains: combat + projectiles + shooting systems, movement system, scoring system, ship systems
-
-
-// TODO: add boost system for movement
-// TODO: add floating objects for level building
-// TODO: add winnig points
+//! A fast-paced 2-player spaceship battle arcade game built with Bevy.
+//!
+//! Crate layout:
+//! - [`ship`]: the player ship, its controls and physics
+//! - [`projectiles`]: shots and the shooting system
+//! - [`combat`]: hit points, colliders, collision resolution
+//! - [`movement`]: kinematics (`Position`, `Facing`, `Velocity`) and motion systems
+//! - [`timers`]: cooldown timers
+//! - [`score`]: scoring and match reset
+//! - [`config`] / [`player_config`]: tuning constants and player bindings
+#![warn(missing_docs)]
 use bevy::prelude::*;
 use movement::*;
 use combat::{clear_dead_stuff, handle_shot_hits};
@@ -19,18 +24,13 @@ mod ship;
 mod score;
 pub mod player_config;
 
-
-
-
-// App Setup
+/// Initializing a 2D camera.
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
 
 
-
-
-// App Setup
+/// Starts and setups the Application. Spawn Logics an Game Systems, as well as observers are run.
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)

@@ -15,7 +15,7 @@ impl Health {
     }
 }
 
-
+/// Collision Enum to determine the irection of the collision.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Collision {
     FRONT,
@@ -32,23 +32,26 @@ impl Collider {
 }
 
 
-fn collision_with_shot(player: Aabb2d, shot: Aabb2d) -> Option<Collision> {
+fn collision_with_shot(player: Aabb2d, player_facing: &movement::Facing, shot: Aabb2d, shot_facing: &movement::Facing) -> Option<Collision> {
     if !player.intersects(&shot) {
         return None;
     }
     Some(Collision::FRONT)
 }
 
+
+/// Detects the direction the ship is hit from and whether it is hit at all, by using vector calculations.
 pub fn handle_shot_hits(
     mut commands: Commands,
-    player_variables: Query<(&movement::Position, &Collider, &mut Health), With<PlayerControls>>,
-    shot_variables: Query<(&movement::Position, &Collider, Entity), With<Shot>>,
-) {
-    for (player_position, player_collider, mut health) in player_variables {
-        for (shot_position, shot_collider, shot) in shot_variables {
+    player_variables: Query<(&movement::Position, &movement::Facing, &Collider, &mut Health), With<PlayerControls>>,
+    shot_variables: Query<(&movement::Position, &movement::Facing, &Collider, Entity), With<Shot>>,
+)
+{
+    for (player_position, player_facing, player_collider, mut health) in player_variables {
+        for (shot_position, shot_facing, shot_collider, shot) in shot_variables {
             if let Some(collision) = collision_with_shot(
-                Aabb2d::new(player_position.0, player_collider.half_size()),
-                Aabb2d::new(shot_position.0, shot_collider.half_size()),
+                Aabb2d::new(player_position.0, player_collider.half_size()), player_facing,
+                Aabb2d::new(shot_position.0, shot_collider.half_size()), shot_facing
             ) {
                 match collision {
                     Collision::FRONT => {

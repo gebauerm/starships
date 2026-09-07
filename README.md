@@ -28,13 +28,13 @@ Built from the ground up using the Bevy game engine, this project demonstrates m
 
 ## 🎮 Controls
 
-| Action            | Player 1 (Defender) | Player 2 (Attacker) |
-|-------------------|---------------------|---------------------|
-| Thrust Forward    | `W`                 | `↑` Arrow Up        |
-| Reverse / Brake   | `S`                 | `↓` Arrow Down      |
-| Rotate Left       | `A`                 | `←` Arrow Left      |
-| Rotate Right      | `D`                 | `→` Arrow Right     |
-| Fire Weapon       | `Space`             | `Numpad 0`          |
+| Action          | Player 1 (Defender) | Player 2 (Attacker) |
+| --------------- | ------------------- | ------------------- |
+| Thrust Forward  | `W`                 | `↑` Arrow Up        |
+| Reverse / Brake | `S`                 | `↓` Arrow Down      |
+| Rotate Left     | `A`                 | `←` Arrow Left      |
+| Rotate Right    | `D`                 | `→` Arrow Right     |
+| Fire Weapon     | `Space`             | `Numpad 0`          |
 
 ---
 
