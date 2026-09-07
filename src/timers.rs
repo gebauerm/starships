@@ -26,7 +26,7 @@ impl BoostDelayTimer {
         let mut timer = Timer::from_seconds(config::BOOST_DELAY, TimerMode::Once);
         // timer.tick(Duration::from_secs_f32(BOOST_DELAY + 1.));
         timer.finish();
-        Self { timer: timer }
+        Self { timer }
     }
 }
 

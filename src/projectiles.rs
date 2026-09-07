@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::movement::{Velocity, Position, Facing, direction_from_angle};
-use crate::{PlayerColor, PlayerControls};
+use crate::ship::{PlayerColor, PlayerControls};
 use crate::config;
 use crate::combat;
 use crate::timers::ShootDelayTimer;
