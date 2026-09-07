@@ -6,8 +6,8 @@
 // TODO: add winnig points
 use bevy::prelude::*;
 use movement::*;
-use combat::{Health, clear_dead_stuff, handle_shot_hits};
-use ship::{PlayerControls, Ship, Shipsprite, load_sprites, handle_player_inputs, spawn_players, update_ship_velocity};
+use combat::{clear_dead_stuff, handle_shot_hits};
+use ship::{PlayerControls, Ship, load_sprites, handle_player_inputs, spawn_players, update_ship_velocity};
 
 
 mod config;
@@ -16,22 +16,10 @@ mod movement;
 mod combat;
 mod projectiles;
 mod ship;
+mod score;
 pub mod player_config;
 
 
-// Event Scoring
-#[derive(EntityEvent)]
-struct Scored {
-    entity: Entity,
-}
-
-
-// Reesource Scoring
-#[derive(Resource)]
-struct Score {
-    attacker: u8,
-    defender: u8,
-}
 
 
 // App Setup
@@ -40,57 +28,13 @@ fn spawn_camera(mut commands: Commands) {
 }
 
 
-// scoring systems
-fn detect_player_destruction(
-    attacker: Single<(Entity, &Health), With<player_config::Attacker>>,
-    defender: Single<(Entity, &Health), With<player_config::Defender>>,
-) {
-    let (attacker, attacker_health) = attacker.into_inner();
-    let (defender, defender_health) = defender.into_inner();
-
-    if defender_health.is_zero() {
-        Scored { entity: attacker };
-    }
-
-    if attacker_health.is_zero() {
-        Scored { entity: defender };
-    }
-}
-
-
-// scoring system
-fn update_score(
-    event: On<Scored>,
-    mut score: ResMut<Score>,
-    attacker: Query<Entity, With<player_config::Attacker>>,
-    defender: Query<Entity, With<player_config::Defender>>,
-) {
-    if attacker.get(event.entity).is_ok() {
-        score.attacker += 1;
-    }
-    if defender.get(event.entity).is_ok() {
-        score.defender += 1;
-    }
-}
-
-
-// scoring system
-fn reset_game(
-    _event: On<Scored>,
-    window: Single<&Window>,
-    commands: Commands,
-    ship_sprite: Res<Shipsprite>,
-) {
-    ship::spawn_players(commands, window, ship_sprite);
-}
-
 
 
 // App Setup
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(Score {
+        .insert_resource(score::Score {
             attacker: 0,
             defender: 0,
         })
@@ -110,7 +54,7 @@ fn main() {
             ),
         )
         .add_observer(projectiles::spawn_shots)
-        .add_observer(update_score)
+        .add_observer(score::update_score)
         //.add_observer(reset_game)
         .run();
 }
