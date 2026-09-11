@@ -9,7 +9,7 @@ pub const SHIP_BREAKS: f32 = SHIP_THRUST * 0.3;
 pub const BOOST_DELAY: f32 = 4.0;
 pub const BOOST_DURATION: f32 = 1.0;
 
-pub const MAX_SHOT_DELAY: f32 = 0.5;
+pub const SHOT_DELAY: f32 = 0.5;
 pub const MAX_SHOT_VELOCITY: f32 = 12.0;
 pub const SHOT_SIZE: f32 = 25.0;
 pub const BACK_HIT_THRESHOLD: f32 = 0.8;

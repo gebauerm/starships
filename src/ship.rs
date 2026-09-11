@@ -1,12 +1,13 @@
 //! The player ship: controls, spawning, and thrust physics.
 
-use crate::{combat, config, movement, player_config, projectiles, timers};
+use crate::{combat, config, movement, player_config, projectiles};
 use bevy::prelude::*;
 use crate::player_config::PlayerConfig;
+use crate::timers::ShipCooldowns;
 
 #[derive(Component, Default)]
 #[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Health = combat::Health(config::SHIP_HEALTH),
-combat::Collider = combat::Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), timers::ShootDelayTimer= timers::ShootDelayTimer::default(), timers::BoostDelayTimer = timers::BoostDelayTimer::default(), timers::BoostDurationTimer=timers::BoostDurationTimer::default())]
+combat::Collider = combat::Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), ShipCooldowns::default())]
 pub struct Ship;
 
 #[derive(Component, Default)]
@@ -80,7 +81,7 @@ struct PlayerBundle {
     position: movement::Position,
     facing: movement::Facing,
     health: combat::Health,
-    shoot_delay_timer: timers::ShootDelayTimer,
+    cooldowns: ShipCooldowns,
     ship: Ship,
     color: PlayerColor,
 }
@@ -100,7 +101,7 @@ impl PlayerBundle {
             position: movement::Position(position),
             facing: movement::Facing(facing),
             health: combat::Health(config::SHIP_HEALTH),
-            shoot_delay_timer: timers::ShootDelayTimer::default(),
+            cooldowns: ShipCooldowns::default(),
             ship: Ship,
             color: PlayerColor(player_config.color),
         }

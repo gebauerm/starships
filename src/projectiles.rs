@@ -6,7 +6,7 @@ use crate::combat;
 use crate::config;
 use crate::movement::{Facing, Position, Velocity, direction_from_angle};
 use crate::ship::{PlayerColor, PlayerControls};
-use crate::timers::ShootDelayTimer;
+use crate::timers::ShipCooldowns;
 
 #[derive(Component, Default)]
 #[require(
@@ -29,7 +29,7 @@ pub fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
     mut variables: Query<
-        (&Position, &Facing, &mut ShootDelayTimer, &PlayerColor),
+        (&Position, &Facing, &mut ShipCooldowns, &PlayerColor),
         With<PlayerControls>,
     >,
     asset_server: Res<AssetServer>,
@@ -38,9 +38,9 @@ pub fn spawn_shots(
     let mut sprite = Sprite::from_image(attacker_img);
     sprite.custom_size = Some(Vec2::new(config::SHOT_SIZE, config::SHOT_SIZE));
 
-    if let Ok((position, facing, mut shoot_delay, player_color)) = variables.get_mut(event.shooter)
+    if let Ok((position, facing, mut ship_cooldowns, player_color)) = variables.get_mut(event.shooter)
     {
-        if shoot_delay.timer.is_finished() {
+        if ship_cooldowns.shot.is_finished() {
             sprite.color = player_color.0;
             let position = position.0
                 + direction_from_angle(facing.to_angle())
@@ -53,7 +53,7 @@ pub fn spawn_shots(
                 Velocity::from_facing(facing),
                 sprite,
             ));
-            shoot_delay.timer.reset();
+            ship_cooldowns.shot.reset();
         }
     }
 }
