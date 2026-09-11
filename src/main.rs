@@ -13,8 +13,9 @@ use bevy::prelude::*;
 use combat::{clear_dead_stuff, handle_shot_hits};
 use movement::*;
 use ship::{
-    PlayerControls, Ship, handle_player_inputs, load_sprites, spawn_players, update_ship_velocity,
+    PlayerControls, Ship, handle_player_inputs, spawn_players, update_ship_velocity,
 };
+use sprites::load_sprites;
 
 mod combat;
 mod config;
@@ -23,6 +24,7 @@ pub mod player_config;
 mod projectiles;
 mod score;
 mod ship;
+mod sprites;
 mod timers;
 
 /// Initializing a 2D camera.

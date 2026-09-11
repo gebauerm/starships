@@ -4,7 +4,7 @@
 use crate::combat::Health;
 use crate::player_config;
 use crate::ship;
-use crate::ship::Shipsprite;
+use crate::sprites::ShipSprite;
 use bevy::prelude::*;
 
 #[derive(EntityEvent)]
@@ -52,7 +52,7 @@ pub fn reset_game(
     _event: On<Scored>,
     window: Single<&Window>,
     commands: Commands,
-    ship_sprite: Res<Shipsprite>,
+    ship_sprite: Res<ShipSprite>,
 ) {
     ship::spawn_players(commands, window, ship_sprite);
 }

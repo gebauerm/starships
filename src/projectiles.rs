@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::combat;
+use crate::sprites;
 use crate::config;
 use crate::movement::{Facing, Position, Velocity, direction_from_angle};
 use crate::ship::{PlayerColor, PlayerControls};
@@ -25,6 +26,7 @@ pub struct Shoot {
     pub shooter: Entity,
 }
 
+
 pub fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
@@ -32,12 +34,10 @@ pub fn spawn_shots(
         (&Position, &Facing, &mut ShipCooldowns, &PlayerColor),
         With<PlayerControls>,
     >,
-    asset_server: Res<AssetServer>,
+    sprite: Res<sprites::ShotSprite>,
 ) {
-    let attacker_img = asset_server.load("shot.png");
-    let mut sprite = Sprite::from_image(attacker_img);
-    sprite.custom_size = Some(Vec2::new(config::SHOT_SIZE, config::SHOT_SIZE));
-
+    let mut sprite = sprite.0.clone();
+    
     if let Ok((position, facing, mut ship_cooldowns, player_color)) = variables.get_mut(event.shooter)
     {
         if ship_cooldowns.shot.is_finished() {

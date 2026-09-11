@@ -3,29 +3,15 @@
 use crate::{combat, config, movement, player_config, projectiles};
 use bevy::prelude::*;
 use crate::player_config::PlayerConfig;
+use crate::sprites::ShipSprite;
 use crate::timers::ShipCooldowns;
 
 #[derive(Component, Default)]
-#[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Health = combat::Health(config::SHIP_HEALTH),
-combat::Collider = combat::Collider(Rectangle::new(config::SHIP_SIZE-10., config::SHIP_SIZE-10.)), ShipCooldowns::default())]
 pub struct Ship;
 
 #[derive(Component, Default)]
 pub struct PlayerColor(pub Color);
 
-#[derive(Resource)]
-pub struct Shipsprite(Sprite);
-
-fn load_ship_sprite(asset_server: &AssetServer) -> Shipsprite {
-    let ship_img = asset_server.load("player.png");
-    let mut sprite = Sprite::from_image(ship_img.clone());
-    sprite.custom_size = Some(Vec2::new(config::SHIP_SIZE, config::SHIP_SIZE));
-    Shipsprite(sprite)
-}
-
-pub fn load_sprites(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(load_ship_sprite(&asset_server));
-}
 
 #[derive(Component)]
 #[require(Ship)]
@@ -179,7 +165,7 @@ fn spawn_player<C: Component>(
 pub fn spawn_players(
     mut commands: Commands,
     window: Single<&Window>,
-    ship_sprite: Res<Shipsprite>,
+    ship_sprite: Res<ShipSprite>,
 ) {
     for player_config in player_config::PLAYER_CONFIGS.iter() {
         match player_config.role {
