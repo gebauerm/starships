@@ -17,6 +17,10 @@ impl Facing {
         let angle = angle * axis.z;
         angle
     }
+    /// Unit vector in the direction the ship points.
+    pub fn direction(&self) -> Vec2 {
+        direction_from_angle(self.to_angle())
+    }
 }
 
 #[derive(Component, Default)]
@@ -27,15 +31,14 @@ pub struct Thrust(pub Vec2);
 pub struct Velocity(pub Vec2);
 
 impl Velocity {
-    // This is used to initialize shots
+    /// This is used to initialize shots
     pub fn from_facing(facing: &Facing) -> Self {
-        let angle = facing.to_angle();
-        let thrust = direction_from_angle(angle) * config::MAX_SHOT_VELOCITY;
+        let thrust = facing.direction()* config::MAX_SHOT_VELOCITY;
         Self(thrust)
     }
 }
 
-// Create a unit vector pointing along the given angle (raian)
+/// Create a unit vector pointing along the given angle (raian)
 pub fn direction_from_angle(angle: f32) -> Vec2 {
     Vec2::from_angle(angle).rotate(Vec2::Y).normalize()
 }

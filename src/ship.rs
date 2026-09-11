@@ -55,9 +55,9 @@ impl Default for PlayerControls {
 }
 
 impl From<&PlayerConfig> for PlayerControls {
-    //! Uses the From trait to implement a constructor. The trait consumes the value an uses it for construction.
-    //! Also implements "into" under the hood
-    //! For more: https://doc.rust-lang.org/std/convert/trait.From.html
+    /// Uses the From trait to implement a constructor. The trait consumes the value an uses it for construction.
+    /// Also implements "into" under the hood
+    /// For more: https://doc.rust-lang.org/std/convert/trait.From.html
     fn from(cfg: &PlayerConfig) -> Self {
         Self {
             acc: cfg.acc,
@@ -153,7 +153,7 @@ pub fn update_ship_velocity(
         facing.0 = Quat::from_rotation_z(angle);
 
         thrust.0 =
-            Vec2::from_angle(angle).rotate(Vec2::Y) * config::SHIP_THRUST * player.thrust_input;
+            facing.direction() * config::SHIP_THRUST * player.thrust_input;
         if player.thrust_input < 0. {
             thrust.0 = velocity.0.normalize() * config::SHIP_BREAKS * player.thrust_input;
         }
