@@ -2,6 +2,7 @@
 
 use crate::{combat, config, movement, player_config, projectiles, timers};
 use bevy::prelude::*;
+use crate::player_config::PlayerConfig;
 
 #[derive(Component, Default)]
 #[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Health = combat::Health(config::SHIP_HEALTH),
@@ -37,40 +38,7 @@ pub struct PlayerControls {
     thrust_input: f32,
     rotation_input: f32,
 }
-impl PlayerControls {
-    fn new(
-        acc: KeyCode,
-        reverse: KeyCode,
-        left: KeyCode,
-        right: KeyCode,
-        fire: KeyCode,
-        boost: KeyCode,
-    ) -> Self {
-        Self {
-            acc,
-            reverse,
-            left,
-            right,
-            fire,
-            boost,
-            thrust_input: 0.,
-            rotation_input: 0.,
-        }
-    }
 
-    fn from_config(player_config: &player_config::PlayerConfig) -> Self {
-        Self {
-            acc: player_config.acc,
-            reverse: player_config.reverse,
-            left: player_config.left,
-            right: player_config.right,
-            fire: player_config.fire,
-            boost: player_config.boost,
-            thrust_input: 0.,
-            rotation_input: 0.,
-        }
-    }
-}
 impl Default for PlayerControls {
     fn default() -> Self {
         Self {
@@ -80,6 +48,24 @@ impl Default for PlayerControls {
             right: KeyCode::KeyD,
             fire: KeyCode::Space,
             boost: KeyCode::ShiftLeft,
+            thrust_input: 0.,
+            rotation_input: 0.,
+        }
+    }
+}
+
+impl From<&PlayerConfig> for PlayerControls {
+    //! Uses the From trait to implement a constructor. The trait consumes the value an uses it for construction.
+    //! Also implements "into" under the hood
+    //! For more: https://doc.rust-lang.org/std/convert/trait.From.html
+    fn from(cfg: &PlayerConfig) -> Self {
+        Self {
+            acc: cfg.acc,
+            reverse: cfg.reverse,
+            left: cfg.left,
+            right: cfg.right,
+            fire: cfg.fire,
+            boost: cfg.boost,
             thrust_input: 0.,
             rotation_input: 0.,
         }
@@ -107,7 +93,7 @@ impl PlayerBundle {
     ) -> Self {
         let (position, facing) = player_config.starting_positions(window);
         let sprite = player_config.color_sprites(sprite);
-        let controls = PlayerControls::from_config(player_config);
+        let controls = PlayerControls::from(player_config);
         Self {
             controls,
             sprite,
