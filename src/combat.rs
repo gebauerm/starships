@@ -1,10 +1,10 @@
 //! Combat: hit points, collliers and collision detection
 
-use bevy::prelude::*;
-use crate::{ PlayerControls, config };
-use bevy::math::bounding::{ Aabb2d, IntersectsVolume };
 use crate::movement;
 use crate::projectiles::Shot;
+use crate::{PlayerControls, config};
+use bevy::math::bounding::{Aabb2d, IntersectsVolume};
+use bevy::prelude::*;
 
 #[derive(Component, Default)]
 pub struct Health(pub f32);
@@ -35,7 +35,7 @@ fn collision_with_shot(
     player: Aabb2d,
     player_facing: &movement::Facing,
     shot: Aabb2d,
-    shot_facing: &movement::Facing
+    shot_facing: &movement::Facing,
 ) -> Option<Collision> {
     if !player.intersects(&shot) {
         return None;
@@ -58,21 +58,24 @@ fn collision_with_shot(
 pub fn handle_shot_hits(
     mut commands: Commands,
     player_variables: Query<
-        (&movement::Position, &movement::Facing, &Collider, &mut Health),
-        With<PlayerControls>
+        (
+            &movement::Position,
+            &movement::Facing,
+            &Collider,
+            &mut Health,
+        ),
+        With<PlayerControls>,
     >,
-    shot_variables: Query<(&movement::Position, &movement::Facing, &Collider, Entity), With<Shot>>
+    shot_variables: Query<(&movement::Position, &movement::Facing, &Collider, Entity), With<Shot>>,
 ) {
     for (player_position, player_facing, player_collider, mut health) in player_variables {
         for (shot_position, shot_facing, shot_collider, shot) in shot_variables {
-            if
-                let Some(collision) = collision_with_shot(
-                    Aabb2d::new(player_position.0, player_collider.half_size()),
-                    player_facing,
-                    Aabb2d::new(shot_position.0, shot_collider.half_size()),
-                    shot_facing
-                )
-            {
+            if let Some(collision) = collision_with_shot(
+                Aabb2d::new(player_position.0, player_collider.half_size()),
+                player_facing,
+                Aabb2d::new(shot_position.0, shot_collider.half_size()),
+                shot_facing,
+            ) {
                 match collision {
                     Collision::FRONT => {
                         health.0 -= config::FRONT_SHOT_DMG;

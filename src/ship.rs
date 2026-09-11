@@ -1,8 +1,7 @@
 //! The player ship: controls, spawning, and thrust physics.
 
+use crate::{combat, config, movement, player_config, projectiles, timers};
 use bevy::prelude::*;
-use crate::{movement, config, timers, combat, player_config, projectiles};
-
 
 #[derive(Component, Default)]
 #[require(movement::Position, movement::Thrust = movement::Thrust(Vec2::ZERO), movement::Velocity = movement::Velocity(Vec2::ZERO), combat::Health = combat::Health(config::SHIP_HEALTH),
@@ -14,7 +13,6 @@ pub struct PlayerColor(pub Color);
 
 #[derive(Resource)]
 pub struct Shipsprite(Sprite);
-
 
 fn load_ship_sprite(asset_server: &AssetServer) -> Shipsprite {
     let ship_img = asset_server.load("player.png");
@@ -118,11 +116,10 @@ impl PlayerBundle {
             health: combat::Health(config::SHIP_HEALTH),
             shoot_delay_timer: timers::ShootDelayTimer::default(),
             ship: Ship,
-            color: PlayerColor(player_config.color)
+            color: PlayerColor(player_config.color),
         }
     }
 }
-
 
 pub fn handle_player_inputs(
     mut commands: Commands,
@@ -152,9 +149,16 @@ pub fn handle_player_inputs(
     }
 }
 
-
 pub fn update_ship_velocity(
-    variables: Query<(&mut movement::Velocity, &mut movement::Thrust, &mut movement::Facing, &PlayerControls), With<Ship>>,
+    variables: Query<
+        (
+            &mut movement::Velocity,
+            &mut movement::Thrust,
+            &mut movement::Facing,
+            &PlayerControls,
+        ),
+        With<Ship>,
+    >,
 ) {
     for (mut velocity, mut thrust, mut facing, player) in variables {
         let (axis, angle) = facing.0.to_axis_angle();
@@ -174,7 +178,6 @@ pub fn update_ship_velocity(
     }
 }
 
-
 fn spawn_player<C: Component>(
     player_config: &player_config::PlayerConfig,
     window: &Single<&Window>,
@@ -186,8 +189,11 @@ fn spawn_player<C: Component>(
     (player_bundle, role_marker)
 }
 
-
-pub fn spawn_players(mut commands: Commands, window: Single<&Window>, ship_sprite: Res<Shipsprite>) {
+pub fn spawn_players(
+    mut commands: Commands,
+    window: Single<&Window>,
+    ship_sprite: Res<Shipsprite>,
+) {
     for player_config in player_config::PLAYER_CONFIGS.iter() {
         match player_config.role {
             player_config::PlayerRole::Attacker => {

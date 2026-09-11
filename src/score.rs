@@ -1,11 +1,11 @@
 //! Scoring and match reset
 //! Currently disabled
 
-use bevy::prelude::*;
-use crate::ship::Shipsprite;
 use crate::combat::Health;
 use crate::player_config;
 use crate::ship;
+use crate::ship::Shipsprite;
+use bevy::prelude::*;
 
 #[derive(EntityEvent)]
 pub struct Scored {
@@ -17,7 +17,6 @@ pub struct Score {
     pub attacker: u8,
     pub defender: u8,
 }
-
 
 fn detect_player_destruction(
     attacker: Single<(Entity, &Health), With<player_config::Attacker>>,
@@ -57,4 +56,3 @@ pub fn reset_game(
 ) {
     ship::spawn_players(commands, window, ship_sprite);
 }
-

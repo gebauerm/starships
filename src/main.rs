@@ -10,25 +10,25 @@
 //! - [`config`] / [`player_config`]: tuning constants and player bindings
 #![warn(missing_docs)]
 use bevy::prelude::*;
-use movement::*;
 use combat::{clear_dead_stuff, handle_shot_hits};
-use ship::{PlayerControls, Ship, load_sprites, handle_player_inputs, spawn_players, update_ship_velocity};
+use movement::*;
+use ship::{
+    PlayerControls, Ship, handle_player_inputs, load_sprites, spawn_players, update_ship_velocity,
+};
 
-
-mod config;
-mod timers;
-mod movement;
 mod combat;
-mod projectiles;
-mod ship;
-mod score;
+mod config;
+mod movement;
 pub mod player_config;
+mod projectiles;
+mod score;
+mod ship;
+mod timers;
 
 /// Initializing a 2D camera.
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2d, Transform::from_xyz(0., 0., 0.)));
 }
-
 
 /// Starts and setups the Application. Spawn Logics an Game Systems, as well as observers are run.
 fn main() {
@@ -38,7 +38,14 @@ fn main() {
             attacker: 0,
             defender: 0,
         })
-        .add_systems(Startup, (spawn_camera, load_sprites.before(spawn_players), spawn_players))
+        .add_systems(
+            Startup,
+            (
+                spawn_camera,
+                load_sprites.before(spawn_players),
+                spawn_players,
+            ),
+        )
         .add_systems(
             FixedUpdate,
             (

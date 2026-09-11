@@ -1,9 +1,8 @@
 //! Cooldown timers shared between ship and projectile systems
 
-use bevy::prelude::*;
-use crate::config;
 use crate::PlayerControls;
-
+use crate::config;
+use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct ShootDelayTimer {
@@ -30,7 +29,6 @@ impl BoostDelayTimer {
     }
 }
 
-
 #[derive(Component)]
 pub struct BoostDurationTimer {
     pub timer: Timer,
@@ -42,7 +40,6 @@ impl BoostDurationTimer {
         }
     }
 }
-
 
 pub fn tick_timers(
     timers: Query<&mut ShootDelayTimer, With<PlayerControls>>,

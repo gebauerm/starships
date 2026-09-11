@@ -1,13 +1,11 @@
 //! Facing is store as a rotation quaternion "to_angle()" gives the signed Z rotation in radians
 
-use bevy::prelude::*;
 use crate::{Ship, config};
-
+use bevy::prelude::*;
 
 #[derive(Component, Default)]
 #[require(Transform)]
 pub struct Position(pub Vec2);
-
 
 #[derive(Component, Default)]
 #[require(Transform)]
@@ -21,11 +19,9 @@ impl Facing {
     }
 }
 
-
 #[derive(Component, Default)]
 #[require(Facing)]
 pub struct Thrust(pub Vec2);
-
 
 #[derive(Component, Default, Debug)]
 pub struct Velocity(pub Vec2);
@@ -43,7 +39,6 @@ impl Velocity {
 pub fn direction_from_angle(angle: f32) -> Vec2 {
     Vec2::from_angle(angle).rotate(Vec2::Y).normalize()
 }
-
 
 pub fn project_positions(mut positionables: Query<(&mut Transform, &Position, &Facing)>) {
     for (mut transform, position, facing) in &mut positionables {
@@ -74,7 +69,6 @@ pub fn enforce_movement_limits(
         }
     }
 }
-
 
 pub fn update_positions(movement_variables: Query<(&mut Position, &Velocity)>) {
     for (mut position, velocity) in movement_variables {
