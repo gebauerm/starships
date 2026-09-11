@@ -1,17 +1,16 @@
 //! The player ship: controls, spawning, and thrust physics.
 
-use crate::{combat, config, movement, player_config, projectiles};
-use bevy::prelude::*;
 use crate::player_config::PlayerConfig;
 use crate::sprites::ShipSprite;
 use crate::timers::ShipCooldowns;
+use crate::{combat, config, movement, player_config, projectiles};
+use bevy::prelude::*;
 
 #[derive(Component, Default)]
 pub struct Ship;
 
 #[derive(Component, Default)]
 pub struct PlayerColor(pub Color);
-
 
 #[derive(Component)]
 #[require(Ship)]
@@ -139,8 +138,7 @@ pub fn update_ship_velocity(
         angle += config::SHIP_ROTATION_SPEED * player.rotation_input;
         facing.0 = Quat::from_rotation_z(angle);
 
-        thrust.0 =
-            facing.direction() * config::SHIP_THRUST * player.thrust_input;
+        thrust.0 = facing.direction() * config::SHIP_THRUST * player.thrust_input;
         if player.thrust_input < 0. {
             thrust.0 = velocity.0.normalize() * config::SHIP_BREAKS * player.thrust_input;
         }

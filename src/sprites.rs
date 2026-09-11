@@ -1,14 +1,11 @@
-use bevy::prelude::*;
 use crate::config;
-
-
+use bevy::prelude::*;
 
 #[derive(Resource)]
 pub struct ShipSprite(pub Sprite);
 
 #[derive(Resource)]
 pub struct ShotSprite(pub Sprite);
-
 
 fn load_ship_sprite(asset_server: &AssetServer) -> ShipSprite {
     let ship_img = asset_server.load("player.png");
@@ -17,7 +14,7 @@ fn load_ship_sprite(asset_server: &AssetServer) -> ShipSprite {
     ShipSprite(sprite)
 }
 
-pub fn load_shot_sprite(asset_server: &AssetServer) -> ShotSprite{
+pub fn load_shot_sprite(asset_server: &AssetServer) -> ShotSprite {
     let attacker_img = asset_server.load("shot.png");
     let mut sprite = Sprite::from_image(attacker_img);
     sprite.custom_size = Some(Vec2::new(config::SHOT_SIZE, config::SHOT_SIZE));

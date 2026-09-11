@@ -3,15 +3,16 @@ use crate::PlayerControls;
 use crate::config;
 use bevy::prelude::*;
 
-
 #[derive(Component)]
 pub struct ShipCooldowns {
-    pub shot: Timer
+    pub shot: Timer,
 }
 
 impl Default for ShipCooldowns {
     fn default() -> Self {
-        Self {shot: Timer::from_seconds(config::SHOT_DELAY, TimerMode::Once) }
+        Self {
+            shot: Timer::from_seconds(config::SHOT_DELAY, TimerMode::Once),
+        }
     }
 }
 

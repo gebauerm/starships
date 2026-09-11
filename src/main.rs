@@ -12,9 +12,7 @@
 use bevy::prelude::*;
 use combat::{clear_dead_stuff, handle_shot_hits};
 use movement::*;
-use ship::{
-    PlayerControls, Ship, handle_player_inputs, spawn_players, update_ship_velocity,
-};
+use ship::{PlayerControls, Ship, handle_player_inputs, spawn_players, update_ship_velocity};
 use sprites::load_sprites;
 
 mod combat;

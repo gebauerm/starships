@@ -33,7 +33,7 @@ pub struct Velocity(pub Vec2);
 impl Velocity {
     /// This is used to initialize shots
     pub fn from_facing(facing: &Facing) -> Self {
-        let thrust = facing.direction()* config::MAX_SHOT_VELOCITY;
+        let thrust = facing.direction() * config::MAX_SHOT_VELOCITY;
         Self(thrust)
     }
 }

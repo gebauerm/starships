@@ -3,10 +3,10 @@
 use bevy::prelude::*;
 
 use crate::combat;
-use crate::sprites;
 use crate::config;
 use crate::movement::{Facing, Position, Velocity, direction_from_angle};
 use crate::ship::{PlayerColor, PlayerControls};
+use crate::sprites;
 use crate::timers::ShipCooldowns;
 
 #[derive(Component, Default)]
@@ -26,7 +26,6 @@ pub struct Shoot {
     pub shooter: Entity,
 }
 
-
 pub fn spawn_shots(
     event: On<Shoot>,
     mut commands: Commands,
@@ -37,8 +36,9 @@ pub fn spawn_shots(
     sprite: Res<sprites::ShotSprite>,
 ) {
     let mut sprite = sprite.0.clone();
-    
-    if let Ok((position, facing, mut ship_cooldowns, player_color)) = variables.get_mut(event.shooter)
+
+    if let Ok((position, facing, mut ship_cooldowns, player_color)) =
+        variables.get_mut(event.shooter)
     {
         if ship_cooldowns.shot.is_finished() {
             sprite.color = player_color.0;
